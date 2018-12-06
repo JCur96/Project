@@ -1,0 +1,86 @@
+\documentclass[11pt,onehalfspacing]{article}
+
+\usepackage[left=2cm, right=2cm, top=2cm]{geometry}
+
+\usepackage{pgfgantt}
+\usepackage[T1]{fontenc}
+\usepackage[math]{iwona}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+
+\begin{document}
+\begin{titlepage}
+			
+			\title{%
+				Shifting baselines in conservation: developing spatial methods and analysis pipelines in R
+				}
+			
+			\author{Jake Curry}
+			
+			\maketitle
+			\begin{center}
+				\large Supervisor: Dr Natalie Cooper \\Natural History Museum \\ natalie.cooper@nhm.ac.uk
+			\end{center}
+			
+\end{titlepage}
+Keywords: GIS, R, Conservation, Biodiversity patterns, Statistical Computing, Reproducible Techniques \\
+
+\textbf{Introduction} \\
+Global biodiversity is under threat, with the current era being termed the sixth mass extinction  \cite{Barnosky2011}. Habitat loss is said to be the leading cause of species extinction\cite{Brooks2002}, with climate change compounding the issue \cite{Thomas2004}. Whilst we have current species range data, we do not know if this is an accurate baseline for conservation efforts. Species ranges may have shifted greatly before we started cataloging species distributions with the aim of conservation. This is problematic as it means we are possibly using incorrect baselines for determining the effects humans have had on species distributions, which has profound consequences for conservation efforts \cite{Froyd2008}. For example, policy makers require baselines to be established to determine the effectiveness of conservation strategies, if we are measuring against the wrong baseline we will naturally draw incorrect conclusions as to the effectiveness of a strategy \cite{Willis2005}\cite{ Willis2006}. The data for historical species ranges exists as specimen metadata in museum collections, such as at the Natural History Museum, London (NHM).  
+This historic data is also of particular interest as it has been identified as an area of `key deficiency` by the Royal Society\cite{RoyalSocietyWorkingParty2003}. This project therefore aims to address a key gap in conservation literature, and address practical concerns of how we routinely incorporate the wealth of data contained within natural history museum archives into current conservation science. 
+Researchers at NHM have already carried out preliminary analyses of these data, but would like a more computationally efficient and reproducible protocol. My aim is to improve upon the existing protocol whilst also developing new spatial analysis tools within R to deal with these issues. \\
+
+\textbf{Questions Proposed} \\ 
+In this project I will answer the following questions: \\
+How do you build an effective workflow incorporating version control of large datasets? \\
+What is the `best` method for computing error in locality metadata? \\
+How much  error is inherent in natural history museum type specimen metadata? \\
+How much of an impact has the Anthropocene had on species range change? i.e. How much do historic specimen localities differ from current IUCN Red List range mapss, within a case study clade?\\
+
+\textbf{Methods} \\ 
+Pipelines will be developed using R, as well as potentially Bash, Python and C. 
+The data sets involved will be large  (covering many thousands of specimens), R will be used to handle these data sets. The spatial analysis will be carried out in R using both pre-built packages (e.g. sf) and functions that will be developed specifically for this project. Graphics will be produced in R. A flow chart of the proposed methods and rough workflow is shown in Figure 1.
+Methods for calculating error will include Maximum Likelihood, Bayesian, the point-radius method \cite{Wieczorek2004} and any other methods in the literature that appear relevant. \\
+
+
+\textbf{Anticipated outputs and outcomes} \\
+1. Development of an analysis pipeline for current and future data collected at the NHM. \\
+2. Version control of the data using datastorr, Git and GitHub. \\
+3. Adding error to already existing point localities/ species range overlap data sets and incorporating this into spatial analyses. \\
+4. Building on the current data sets to include new taxa. \\
+5. A case study establishing how much ranges of a specific vertebrate clade have already shifted since initial type specimen collection. The number of species included will depend on time constraints. \\
+
+
+\textbf{Budget} \\
+1. travel - \textsterling1000  - Price of return ticket from Sunningdale Station to London Tube zones 1-4 is \textsterling15.90, this is a trip I will be taking twice a week minimum. If taking this trip for the duration of the project the cost will be \textsterling1208.40.
+
+
+\subsection*{Timeline}
+	\tikzset{every picture/.style={yscale=0.9,transform shape}}
+    \begin{ganttchart}{1}{27}
+        \gantttitle{Figure 1. Project Timeline}{9} \\
+        \gantttitlelist{1,...,9}{3} \\
+        \ganttbar{Reading}{1}{27} \\
+        \ganttbar{Intro Write up}{3}{5} \\
+        \ganttbar{Version Control}{6}{7} \\
+        \ganttlinkedbar{Method Write up(version control)}{3}{6} \\
+        \ganttbar{Data Collection for Case Study}{6}{8} \\
+        \ganttlinkedbar{Method Write up(Data Collection)}{8}{9} \\
+        \ganttbar{Data Wrangling}{10}{12} \\
+        \ganttlinkedbar{Method Write up(data wrangling)}{11}{12} \\
+        \ganttbar{Plotting}{13}{14} \\
+        \ganttlinkedbar{Method Write up(Plotting)}{13}{14} \\
+        \ganttbar{Adding Error}{14}{17} \\
+        \ganttlinkedbar{Method Write up(Adding error)}{15}{17} \\
+        \ganttbar{Analysis of overlap with error}{18}{20} \\
+        \ganttlinkedbar{Results Wrtie up}{20}{20} \\
+        \ganttbar{Conclusions/Discussion}{21}{27} \\
+        \ganttbar{Refinement of writing}{5}{27} \\
+        
+    \end{ganttchart}  
+
+\bibliography{bibliography}
+\bibliographystyle{plain}
+
+\end{document}
