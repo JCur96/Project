@@ -55,74 +55,61 @@ library(mapdata)
 library(ggforce)
 library(rgeos)
 ###################Data_Wrangling################
-#
-#
-#
 df <- read.csv("Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
-#
-#
+
+
 df <- df %>% filter(Longitude != is.na(Longitude) & Locality != '' & Extent_km < 800) #filtering the data (removing NA's as sf cannot parse data
 # with NA's), and improving quality (removing things that were only found to country level) both 
 # locality null and extent less than 800km needed for that
-#
-#
+
+
 df_sp <- st_as_sf(df, coords = c("Longitude", "Latitude"), crs = 4326) # does a neat trick and combines lat/long into one variable (geometry)
 # and sets datum to WGS84 (thats the crs 4326 part)
-#
-#
+
+
 #################Plotting map of points#############
-#
-#
-#
 # be aware that right now, if looked at in terms of simple features, this is an XYM sf, as it incorporates a measure (extent radius)
 # equally this is all on an uncorrected datum (but the same one as the base map oddly enough)
 bc_bbox <- make_bbox(lat = Latitude, lon = Longitude, data = df) # computing a bound box using the data from the sheet
 # bound box is just fancy GIS language for the area of map to be made and displayed
 bc_bbox # displays extremes of the bound box
-#
-#
+
+
 bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain") # gives the bound box to google maps, which converts it to a 
 # google made map centred nicely and made to a reasonable scale. 
-#
-#
+
+
 ggmap(bc_big) + #need to filter data to exclude that which is only to country level
   geom_point(data = df, mapping = aes(x = Longitude, y = Latitude, size = Extent_km, color = ScientificName), alpha = 0.4, show.legend = FALSE) #makes a graphic out 
 # of the google created map using ggplot!
 # the method above has created area circles incorporating error, so should be able to use these to compute overlap 
 # as it stands because alpha is set low overlap of these points is being displayed by fill!
-#
+
+
+
 ##########################################################THIS BIT WORKS! MAP ISN'T SUPER PRETTY BUT IT WORKS!###############################
 # sf method of map making
 # install.packages("rgeos") # another one which is a pain to install, leave the PPA's as trusted (you'll need unstable for anything newer than Xenial)
 # the missing package was libgeos-c1v5 in my case, so sudo apt-get install libgeos-c1v5 and you should be good to go. 
 
-df_km <- st_transform(df_sp, "+proj=utm +zone=42N +datum=WGS84 +units=km") # this has put everything into a km representation I think
-buffer <- st_buffer(df_km$geometry, df_km$Extent_km) # have to strip  out the other data columns, but it gives us what we want mostly
-plot(buffer) # this shows potential
-# might want to reintergrate the data here so that species can be identified, but thats a tomorrow issue 
 
-df_GE <- df_sp %>% select(Extent_km, geometry)
-df_km <- st_transform(df_GE, "+proj=utm +zone=42N +datum=WGS84 +units=km")
-buffer <- st_buffer(df_km, df_km$Extent_km)
-buffer <- st_transform(buffer, 4326)
-plot(buffer)
-sfbbox <- st_bbox(df_sp) # getting the bbox but with the corrected datum
-sfbbox
-bbox <- unname(sfbbox) 
-xlim <- c(bbox[1], bbox[3])
+# the below is working quite well, other than some issues with the aesthetics (need to sort the color=sciname part)
+df_km <- st_transform(df_sp, "+proj=utm +zone=42N +datum=WGS84 +units=km") #puts all into a km based projection 
+buffer <- st_buffer(df_km, df_km$Extent_km) #allowing st_buffer to do its thing
+buffer <- st_transform(buffer, 4326) # transforms it back to coord based projection
+sfbbox <- st_bbox(buffer) # getting the bbox but with the corrected datum
+sfbbox #shows what this is (a min/max bounds for a map)
+bbox <- unname(sfbbox) #pulls the column names out
+xlim <- c(bbox[1], bbox[3]) # puts the coords into the order expected down in ggmap coords
 ylim <- c(bbox[2], bbox[4])
-ylim
 SAMap <- st_as_sf(map("world", plot=F, fill=T))
-head(SAMap)
 ggplot(data = SAMap) +
   geom_sf() +
-  geom_sf(mapping = aes(alpha = 1/10), data = buffer, shape = 1) + 
+  geom_sf(mapping = aes(alpha = 0.1, color=buffer$ScientificName), data = buffer, shape = 1, show.legend =F) + 
   coord_sf(xlim = xlim, ylim = ylim, expand =T)
 
-###########################################################################################################################
-#
-#
-#
+
+
 ###############making error polygons################
 #
 # 
@@ -175,37 +162,6 @@ ggplot(data = SAMap) +
 
 #########################################messy sandbox#####################################
 
-
-
-plot(geom, add=t)
-
-
-
-
-
-###
-df_sp %>% st_cast("POLYGON")
-
-df_GE <- df_sp %>% select(Extent_km, geometry)
-
-df_GE <- df_GE %>% set_units(df_GE$Extent_km, "km")
-
-
-install.packages('units')
-library(units)
-buffer <- st_buffer(df_sp, dist =df_sp$Extent_km)
-plot(buffer)
-
-df_sp <- for(i in df_sp$geometry){
-    st_buffer(i, dist = df_sp$Extent_km)
-}
-
-lapply(df_sp, for i in geomerty(st_buffer, Extent_km))
-buffer <- st_buffer(df_sp, dist = df_sp$Extent_km)
-plot(buffer)
-
-df_un <- set_units(df_sp$Extent_km, 'km')
-st_buffer(dist = df_un)
 ######plotting######
 #
 #
