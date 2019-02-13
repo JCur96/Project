@@ -53,6 +53,7 @@ library(ggmap)
 library(maps)
 library(mapdata)
 library(ggforce)
+library(rgeos)
 ###################Data_Wrangling################
 #
 #
@@ -92,9 +93,19 @@ ggmap(bc_big) + #need to filter data to exclude that which is only to country le
 #
 ##########################################################THIS BIT WORKS! MAP ISN'T SUPER PRETTY BUT IT WORKS!###############################
 # sf method of map making
-install.packages("rgeos") # another one which is a pain to install, leave the PPA's as trusted (you'll need unstable for anything newer than Xenial)
+# install.packages("rgeos") # another one which is a pain to install, leave the PPA's as trusted (you'll need unstable for anything newer than Xenial)
 # the missing package was libgeos-c1v5 in my case, so sudo apt-get install libgeos-c1v5 and you should be good to go. 
-library(rgeos)
+
+df_km <- st_transform(df_sp, "+proj=utm +zone=42N +datum=WGS84 +units=km") # this has put everything into a km representation I think
+buffer <- st_buffer(df_km$geometry, df_km$Extent_km) # have to strip  out the other data columns, but it gives us what we want mostly
+plot(buffer) # this shows potential
+# might want to reintergrate the data here so that species can be identified, but thats a tomorrow issue 
+
+df_GE <- df_sp %>% select(Extent_km, geometry)
+df_km <- st_transform(df_GE, "+proj=utm +zone=42N +datum=WGS84 +units=km")
+buffer <- st_buffer(df_km, df_km$Extent_km)
+buffer <- st_transform(buffer, 4326)
+plot(buffer)
 sfbbox <- st_bbox(df_sp) # getting the bbox but with the corrected datum
 sfbbox
 bbox <- unname(sfbbox) 
@@ -105,35 +116,10 @@ SAMap <- st_as_sf(map("world", plot=F, fill=T))
 head(SAMap)
 ggplot(data = SAMap) +
   geom_sf() +
-  geom_sf(data = df_sp, size = 4, shape = 3, fill = "red") +
+  geom_sf(mapping = aes(alpha = 1/10), data = buffer, shape = 1) + 
   coord_sf(xlim = xlim, ylim = ylim, expand =T)
 
 ###########################################################################################################################
-#
-#
-#
-#########################################messy sandbox for plotting#####################################
-#
-#
-#
-# below is very much messing around to see what fits. Almost certianly will need to get a google maps API key (effectively free, $200/month
-# credit and 1000 map loads costs $0.50, but still a pain in the arse)
-# need to get the base map (get_map) in the correct datum (dont know if theres an easy way to do this)
-map <- get_map(location = unname(sfbbox)) # gets a map from the bbox after porviding it in a form that get_map expects
-ggmap(map) + 
-  geom_sf(data = df_sp, inherit.aes = F) # clearly this doesnt quite work. Datum is off by quite a margin
-
-plot_sf(df_sp, bgMap = map)
-install.packages('dismo')
-install.packages('XML')
-geocode('Latin America') # kinda cool but probably wrong in many ways
-library(dismo)
-library(XML)
-dismo:gmap() # according to a help thread this might solve my issue
-gmap("brazil")
-# going to need to convert km to decimal degrees to add buffer, which will be instumental in doing nice overlap calcs I think.
-# how to do it in python https://stackoverflow.com/questions/18150434/convert-from-kilometers-km-to-decimal-degrees maybe write and call a 
-# python script?
 #
 #
 #
@@ -186,5 +172,63 @@ gmap("brazil")
 
 
 
+
+#########################################messy sandbox#####################################
+
+
+
+plot(geom, add=t)
+
+
+
+
+
+###
+df_sp %>% st_cast("POLYGON")
+
+df_GE <- df_sp %>% select(Extent_km, geometry)
+
+df_GE <- df_GE %>% set_units(df_GE$Extent_km, "km")
+
+
+install.packages('units')
+library(units)
+buffer <- st_buffer(df_sp, dist =df_sp$Extent_km)
+plot(buffer)
+
+df_sp <- for(i in df_sp$geometry){
+    st_buffer(i, dist = df_sp$Extent_km)
+}
+
+lapply(df_sp, for i in geomerty(st_buffer, Extent_km))
+buffer <- st_buffer(df_sp, dist = df_sp$Extent_km)
+plot(buffer)
+
+df_un <- set_units(df_sp$Extent_km, 'km')
+st_buffer(dist = df_un)
+######plotting######
+#
+#
+# below is very much messing around to see what fits. Almost certianly will need to get a google maps API key (effectively free, $200/month
+# credit and 1000 map loads costs $0.50, but still a pain in the arse)
+# need to get the base map (get_map) in the correct datum (dont know if theres an easy way to do this)
+map <- get_map(location = unname(sfbbox)) # gets a map from the bbox after porviding it in a form that get_map expects
+ggmap(map) + 
+  geom_sf(data = df_sp, inherit.aes = F) # clearly this doesnt quite work. Datum is off by quite a margin
+
+plot_sf(df_sp, bgMap = map)
+install.packages('dismo')
+install.packages('XML')
+geocode('Latin America') # kinda cool but probably wrong in many ways
+library(dismo)
+library(XML)
+dismo:gmap() # according to a help thread this might solve my issue
+gmap("brazil")
+# going to need to convert km to decimal degrees to add buffer, which will be instumental in doing nice overlap calcs I think.
+# how to do it in python https://stackoverflow.com/questions/18150434/convert-from-kilometers-km-to-decimal-degrees maybe write and call a 
+# python script?
+#
+#
+#
 
   
