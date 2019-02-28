@@ -47,6 +47,7 @@
 # install.packages("rgeos") # another one which is a pain to install, leave the PPA's as trusted (you'll need unstable for anything newer than Xenial)
 # the missing package was libgeos-c1v5 in my case, so sudo apt-get install libgeos-c1v5 and you should be good to go. 
 ####################Imports###################### 
+#devtools::install_github('cran/ggplot2')
 library(tidyverse)
 library(dplyr)
 library(sf)
@@ -63,24 +64,26 @@ library(plyr)
 ####### NHM collections data #######
 # perhaps a loop here to work through all data
 
-df <- read.csv("Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
-colnames(df)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
-df <- df %>% filter(Longitude != is.na(Longitude) & Locality != '' & Extent_km < 800 & binomial != '') #filtering the data (removing NA's as sf cannot parse data
+NHM_AMPH <- read.csv("Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
+colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
+NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) & Locality != '' & Extent_km < 800 & binomial != '') #filtering the data (removing NA's as sf cannot parse data
 # with NA's), and improving quality (removing things that were only found to country level) both 
 # locality null and extent less than 800km, as well as removing blank spaces needed for that
 
-raw_binom_list <- df %>% select(binomial)# useful for filtering the big dataset as it requires much less memory than the full df
-binom_list <- list()
-for(i in raw_binom_list){
-  for(j in i){
-    j <- gsub(' ', '_', j) # replaces spaces between spp and genus
-    binom_list <- append(binom_list, j) # appends to the list 
-  }
-}
+NHM_AMPH$binomial <- gsub(' ', '_', NHM_AMPH$binomial) # removes spaces 
 
-df_sp <- st_as_sf(df, coords = c("Longitude", "Latitude"), crs = 4326) # does a neat trick and combines lat/long into one variable (geometry)
+# binom_list <- list()
+# for(i in raw_binom_list){
+#   for(j in i){
+#     j <- gsub(' ', '_', j) # replaces spaces between spp and genus
+#     binom_list <- append(binom_list, j) # appends to the list 
+#   }
+# }
+
+NHM_AMPH <- st_as_sf(NHM_AMPH, coords = c("Longitude", "Latitude"), crs = 4326) # does a neat trick and combines lat/long into one variable (geometry)
 # and sets datum to WGS84 (thats the crs 4326 part)
-write.csv(df_sp, file = "Data/SA_AMPH_NHM_DF.csv") # saving the spatial frame, possibly to send to python for faster operations
+binom_list <- NHM_AMPH$binomial# needed for filtering the IUCN data (as match(x, table) requires a vector or table)
+write.csv(NHM_AMPH, file = "../Data/SA_AMPH_NHM_DF.csv") # saving the spatial frame, possibly to send to python for faster operations
 
 
 ####### IUCN rangemap data #######
@@ -88,50 +91,45 @@ IUCN <- readOGR(dsn = "Data", layer = "AMPHIBIANS") # IUCN data isn't supplied i
 IUCN <- st_as_sf(IUCN) # but is readily transformed to sf format! 
 IUCN <- st_transform(IUCN, 4326) # making sure its in the same CRS as the other data
 #head(IUCN)
+myvars <- c("binomial", "SHAPE_Leng", "SHAPE_Area", "geometry") # pulling out the parts we actually need
+IUCN <- IUCN[myvars]
+#head(IUCN)
+#class(IUCN)
+IUCN$binomial <- gsub(' ', '_', IUCN$binomial) # removes spaces from spp_genus
 
-IUCN_binom <- IUCN %>% select(binomial) # this is actually probably not any faster than specifying which column on the whole data set
-IUCN_binom_ns <- list()
-for(x in IUCN_binom$binomial){
-  for(y in x){
-    y <- gsub(' ', '_', y) # replaces spaces between spp and genus
-    IUCN_binom_ns <- append(IUCN_binom_ns, y)
-  }
-}
+write.csv(IUCN, file = "../Data/IUCN_Spatial.csv") # saves it for use here or elsewhere in its updated form
 
-IUCN_binom_ns<- data.frame(matrix(unlist(IUCN_binom_ns), ncol=1))
-colnames(IUCN_binom_ns)[1] <- "binomial"
+IUCN_filtered <- IUCN %>% filter(binomial %in% binom_list) # pulls out only the species which are in both data sets
+head(IUCN_filtered)
 
-head(IUCN_binom_ns)
-class(IUCN_binom_ns)
 
-IUCN_test <- IUCN #putting something here to stop having to load the main data set
-class(IUCN)
-
-#IUCN_test <- IUCN_test[,-2]
-#IUCN_test <- join(IUCN_binom_ns, IUCN_test)
-
-IUCN <- merge(IUCN_test, IUCN_binom_ns, by = "binomial", all.y =T) # replaces the binomal column with a space removed one 
-
-head(IUCN_test$binomial)
-class(IUCN_test)
-head(IUCN)
-
-write.csv(IUCN, file = "Data/IUCN_Spatial.csv") # saves it for use here or elsewhere in its updated form
-
-IUCN_filtered <- array(NA, dim = c(length(unique(df_sp))))
-
-for(name in IUCN$binomial){
-  if(match(IUCN$binomial, binom_list)){
-    IUCN_filtered <- append(IUCN_filtered, name)
-  }
-}
 # maybe change the below to a for(unique(i) in binomial) ggplot
 #IUCN <- IUCN %>% match(IUCN$binomial %in% df_sp$binomial)
 #IUCN <- IUCN %>% which(IUCN$binomial %in% df_sp$binomial) # filtering the IUCN data to those that are found in the NHM data
-IUCN <- IUCN %>% filter(binomial == "Pristimantis affinis") # when automating, look at hpc script as splitting into df based on spp will be similar to hpc  
+#IUCN <- IUCN %>% filter(binomial == "Pristimantis affinis") # when automating, look at hpc script as splitting into df based on spp will be similar to hpc  
+SAMap <- st_as_sf(map("world", plot=F, fill=T))
+MapPlot = ggplot(data = SAMap) + geom_sf()
+MapPlot
+SAMap
+
+plot_list = list()
+for (var in unique(IUCN_filtered$binomial)) { # unique id -- use binomial names as unique ID's
+  p = ggplot(IUCN_filtered[IUCN_filtered$binomial==var,]) +
+  geom_sf() +
+  geom_sf(mapping = aes(alpha = 0.1), data = IUCN_filtered, show.legend = F) +
+  coord_sf(xlim = xlim, ylim = ylim, expand = T)
+  plot_list[[var]] = p
+}
+unique(IUCN_filtered$binomial)
+for (var in unique(IUCN_filtered$binomial)) {
+  file_name = paste("Output/IUCN_Range_Graphs/Graph_", var, ".tiff", sep="")
+  tiff(file_name)
+  print(plot_list[[var]])
+  dev.off()
+}
 
 
-#################Initial NHM visualization#############
+##############Initial NHM visualization#############
 # # be aware that right now, if looked at in terms of simple features, this is an XYM sf, as it incorporates a measure (extent radius)
 # # equally this is all on an uncorrected datum (but the same one as the base map oddly enough)
 # bc_bbox <- make_bbox(lat = Latitude, lon = Longitude, data = df) # computing a bound box using the data from the sheet
