@@ -64,19 +64,19 @@ library(plyr)
 ####### NHM collections data #######
 # perhaps a loop here to work through all data
 
-NHM_AMPH <- read.csv("Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
+NHM_AMPH <- read.csv("../Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
 NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) & Locality != '' & Extent_km < 800 & binomial != '') #filtering the data (removing NA's as sf cannot parse data
-# with NA's), and improving quality (removing things that were only found to country level) both 
+# with NA's), and improving quality (removing things that were only found to country level) both
 # locality null and extent less than 800km, as well as removing blank spaces needed for that
 
-NHM_AMPH$binomial <- gsub(' ', '_', NHM_AMPH$binomial) # removes spaces 
+NHM_AMPH$binomial <- gsub(' ', '_', NHM_AMPH$binomial) # removes spaces
 
 # binom_list <- list()
 # for(i in raw_binom_list){
 #   for(j in i){
 #     j <- gsub(' ', '_', j) # replaces spaces between spp and genus
-#     binom_list <- append(binom_list, j) # appends to the list 
+#     binom_list <- append(binom_list, j) # appends to the list
 #   }
 # }
 
@@ -88,7 +88,7 @@ write.csv(NHM_AMPH, file = "../Data/SA_AMPH_NHM_DF.csv") # saving the spatial fr
 
 ####### IUCN rangemap data #######
 IUCN <- readOGR(dsn = "Data", layer = "AMPHIBIANS") # IUCN data isn't supplied in sf format, so has to be read in the old way
-IUCN <- st_as_sf(IUCN) # but is readily transformed to sf format! 
+IUCN <- st_as_sf(IUCN) # but is readily transformed to sf format!
 IUCN <- st_transform(IUCN, 4326) # making sure its in the same CRS as the other data
 #head(IUCN)
 myvars <- c("binomial", "SHAPE_Leng", "SHAPE_Area", "geometry") # pulling out the parts we actually need
@@ -97,37 +97,53 @@ IUCN <- IUCN[myvars]
 #class(IUCN)
 IUCN$binomial <- gsub(' ', '_', IUCN$binomial) # removes spaces from spp_genus
 
-write.csv(IUCN, file = "../Data/IUCN_Spatial.csv") # saves it for use here or elsewhere in its updated form
+# this line seems to cause problems, I imagine its because the data set is so large that it eats all the memory
+#write.csv(IUCN, file = "Data/IUCN_Spatial.csv") # saves full data set for use here or elsewhere in its updated form
 
 IUCN_filtered <- IUCN %>% filter(binomial %in% binom_list) # pulls out only the species which are in both data sets
 head(IUCN_filtered)
-
+write.csv(IUCN_filtered, file = "Data/IUCN_NHM_Spp_Match.csv")
+NHM_AMPH_filtered <- NHM_AMPH  %>% filter(binomial %in% binom_list) 
 
 # maybe change the below to a for(unique(i) in binomial) ggplot
 #IUCN <- IUCN %>% match(IUCN$binomial %in% df_sp$binomial)
 #IUCN <- IUCN %>% which(IUCN$binomial %in% df_sp$binomial) # filtering the IUCN data to those that are found in the NHM data
 #IUCN <- IUCN %>% filter(binomial == "Pristimantis affinis") # when automating, look at hpc script as splitting into df based on spp will be similar to hpc  
-SAMap <- st_as_sf(map("world", plot=F, fill=T))
-MapPlot = ggplot(data = SAMap) + geom_sf()
-MapPlot
-SAMap
 
+SAMap <- st_as_sf(map("world", plot=F, fill=T))
+NHM_AMPH_filtered <- st_transform(NHM_AMPH_filtered, "+proj=utm +zone=42N +datum=WGS84 +units=km") # puts all into a km based projection
+buffer <- st_buffer(NHM_AMPH_filtered, NHM_AMPH_filtered$Extent_km) # st_buffer used like this computes a circle with radius specified in Extent
+buffer <- st_transform(buffer, 4326) # transforms it back to coord based projection
 plot_list = list()
 for (var in unique(IUCN_filtered$binomial)) { # unique id -- use binomial names as unique ID's
-  p = ggplot(IUCN_filtered[IUCN_filtered$binomial==var,]) +
+  p = ggplot(data = SAMap) +
   geom_sf() +
-  geom_sf(mapping = aes(alpha = 0.1), data = IUCN_filtered, show.legend = F) +
+  geom_sf(mapping = aes(alpha = 0.5, fill ="blue"), data = buffer[buffer$binomial==var,], show.legend =F) +
+  geom_sf(mapping = aes(alpha = 0.1, fill = "red"), data = IUCN_filtered[IUCN_filtered$binomial==var,], show.legend = F) +
   coord_sf(xlim = xlim, ylim = ylim, expand = T)
   plot_list[[var]] = p
 }
-unique(IUCN_filtered$binomial)
+
 for (var in unique(IUCN_filtered$binomial)) {
-  file_name = paste("Output/IUCN_Range_Graphs/Graph_", var, ".tiff", sep="")
-  tiff(file_name)
+  file_name = paste("../Output/IUCN_Range_Graphs/Graph_", var, ".png", sep="")
+  png(file_name)
   print(plot_list[[var]])
   dev.off()
 }
 
+testIUCN_filtered <- IUCN_filtered %>% filter(binomial == "Pristimantis_erythropleura") # pulls out only the species which are in both data sets
+buffer <- st_buffer(NHM_AMPH_filtered, NHM_AMPH_filtered$Extent_km) # st_buffer used like this computes a circle with radius specified in Extent
+buffer <- st_transform(buffer, 4326)
+buffer <- st_set_crs(buffer, 4326)
+buffer <- buffer %>% filter(binomial == "Pristimantis_erythropleura") # pulls out only the species which are in both data sets
+testIUCN_filtered <- st_set_crs(testIUCN_filtered, 4326)
+testNHM_filtered
+intersection <- st_intersection(testIUCN_filtered,buffer)
+
+class(intersection)
+plot(testIUCN_filtered$geometry)
+plot(buffer$geometry)
+plot(intersection)
 
 ##############Initial NHM visualization#############
 # # be aware that right now, if looked at in terms of simple features, this is an XYM sf, as it incorporates a measure (extent radius)
@@ -148,8 +164,8 @@ for (var in unique(IUCN_filtered$binomial)) {
 ##########################################################THIS BIT WORKS! MAP ISN'T SUPER PRETTY BUT IT WORKS!###############################
 # sf method of map making
 
-df_km <- st_transform(df_sp, "+proj=utm +zone=42N +datum=WGS84 +units=km") # puts all into a km based projection 
-buffer <- st_buffer(df_km, df_km$Extent_km) # st_buffer used like this computes a circle with radius specified in Extent
+NHM_AMPH <- st_transform(NHM_AMPH, "+proj=utm +zone=42N +datum=WGS84 +units=km") # puts all into a km based projection
+buffer <- st_buffer(NHM_AMPH, NHM_AMPH$Extent_km) # st_buffer used like this computes a circle with radius specified in Extent
 buffer <- st_transform(buffer, 4326) # transforms it back to coord based projection
 sfbbox <- st_bbox(buffer) # getting the bbox but with the corrected datum
 sfbbox #shows what this is (a min/max bounds for a map)
@@ -159,7 +175,7 @@ ylim <- c(bbox[2], bbox[4])
 SAMap <- st_as_sf(map("world", plot=F, fill=T)) #gets the specified map from maps package circumventing the need for google API
 MapPlot <- ggplot(data = SAMap) + #plots it
   geom_sf() +
-  geom_sf(mapping = aes(alpha = 0.1, color=buffer$ScientificName), data = buffer, shape = 1, show.legend =F) + 
+  geom_sf(mapping = aes(alpha = 0.1, color=buffer$ScientificName), data = buffer, shape = 1, show.legend =F) +
   coord_sf(xlim = xlim, ylim = ylim, expand =T) # if adding iucn this line needs to be outside of object#zooms the map to encompass the extreme coords only, giving reasonable scale
 MapPlot+geom_sf(mapping = aes(alpha = 0.1, color=IUCN$binomial), data = IUCN, show.legend = F)+coord_sf(xlim = xlim, ylim = ylim, expand =T)
 
@@ -240,18 +256,18 @@ MapPlot+geom_sf(mapping = aes(alpha = 0.1, color=IUCN$binomial), data = IUCN, sh
 # below is very much messing around to see what fits. Almost certianly will need to get a google maps API key (effectively free, $200/month
 # credit and 1000 map loads costs $0.50, but still a pain in the arse)
 # need to get the base map (get_map) in the correct datum (dont know if theres an easy way to do this)
-map <- get_map(location = unname(sfbbox)) # gets a map from the bbox after porviding it in a form that get_map expects
-ggmap(map) + 
-  geom_sf(data = df_sp, inherit.aes = F) # clearly this doesnt quite work. Datum is off by quite a margin
-
-plot_sf(df_sp, bgMap = map)
-install.packages('dismo')
-install.packages('XML')
-geocode('Latin America') # kinda cool but probably wrong in many ways
-library(dismo)
-library(XML)
-dismo:gmap() # according to a help thread this might solve my issue
-gmap("brazil")
+# map <- get_map(location = unname(sfbbox)) # gets a map from the bbox after porviding it in a form that get_map expects
+# ggmap(map) + 
+#   geom_sf(data = df_sp, inherit.aes = F) # clearly this doesnt quite work. Datum is off by quite a margin
+# 
+# plot_sf(df_sp, bgMap = map)
+# install.packages('dismo')
+# install.packages('XML')
+# geocode('Latin America') # kinda cool but probably wrong in many ways
+# library(dismo)
+# library(XML)
+# dismo:gmap() # according to a help thread this might solve my issue
+# gmap("brazil")
 # going to need to convert km to decimal degrees to add buffer, which will be instumental in doing nice overlap calcs I think.
 # how to do it in python https://stackoverflow.com/questions/18150434/convert-from-kilometers-km-to-decimal-degrees maybe write and call a 
 # python script?
