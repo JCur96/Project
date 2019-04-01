@@ -60,6 +60,8 @@
 # install.packages("devtools")
 # library(devtools)
 # devtools::install_github('cran/ggplot2')
+install.packages("lwgeom")
+library(lwgeom)
 library(tidyverse)
 library(dplyr)
 library(sf)
@@ -98,13 +100,14 @@ IUCN <- st_as_sf(IUCN)
 # making sure its in the same CRS as the other data
 IUCN <- st_transform(IUCN, 4326) 
 # pulling out the parts we actually need
-myvars <- c("binomial", "SHAPE_Leng", "SHAPE_Area", "geometry") 
+# myvars <- c("binomial", "SHAPE_Leng", "SHAPE_Area", "geometry") 
+myvars <- c("binomial", "geometry") 
 IUCN <- IUCN[myvars]
 # removes spaces from spp_genus
 IUCN$binomial <- gsub(' ', '_', IUCN$binomial) 
 
-# this line seems to cause problems, I imagine its because the data set is so large that it eats all the memory
-#write.csv(IUCN, file = "Data/IUCN_Spatial.csv") # saves full data set for use here or elsewhere in its updated form
+##### this works but takes an age ###
+# write.csv(IUCN, file = "../Data/IUCN_Spatial.csv") # saves full data set for use here or elsewhere in its updated form
 
 # needed for filtering the IUCN data
 binom_list <- NHM_AMPH$binomial
@@ -123,13 +126,18 @@ buffer <- st_buffer(NHM_AMPH_filtered, NHM_AMPH_filtered$Extent_km)
 buffer <- st_transform(buffer, 4326) 
 tokeep <- c("binomial", "geometry")
 filtered_buffer <- buffer[tokeep]
+
+# making sensible bounds for a map
 sfbbox <- st_bbox(buffer) # getting the bbox but with the corrected datum
 sfbbox #shows what this is (a min/max bounds for a map)
 bbox <- unname(sfbbox) #pulls the column names out
 xlim <- c(bbox[1], bbox[3]) # puts the coords into the order expected down in ggmap coords
 ylim <- c(bbox[2], bbox[4])
-plot_list = list()
+
+
 # binomial names as individual var's
+### I dont think this is adding all the points we have to it, only the first one
+### need to fix that, maybe a match == T type statement in there
 for (var in unique(IUCN_filtered$binomial)) { 
   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
   NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]
@@ -143,21 +151,50 @@ for (var in unique(IUCN_filtered$binomial)) {
     dev.off() # not sending to screen
 }
 
+# now for overlaps 
+# polygonise the buffer 
+# then the overlap function may well work
+# hopefully then can do a lapply
+?st_polygonize
+?st_intersection
+?st_area
+# for the below to work, need a single list of spp and the geometrys from both NHM + IUCN
+# buffer is already a polygon, which makes life easier (removes a step)
 
-# for (i in 1:10) {
-#   mydata_id <- subset(mydata, id == i) # subselect group
-#   p <- ggplot(mydata_id, aes(x, y)) + geom_line() # create graph
-#   png(paste("plot_", i, ".png", sep = ""), width=600, height=500, res=120) # start export
-#   print(p) 
-#   dev.off() # finish export
-# }
 
 
+# maybe pull the single row out of iucn and add it to buffer data is simpler
+merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf objects is to use c
+merged <- rbind(IUCN_filtered, filtered_buffer)
+isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- rbind(isauv, sauv)
+sauv <- st_cast(sauv, "POLYGON")
+myvar = c("geometry")
+sauv <- sauv[myvar]
+sauv <- st_transform(sauv, 2163)
+sauv
 
-# for (i in unique(IUCN_filtered$binomial)) {
-#   file_name = paste("../Output/IUCN_Range_Graphs/Graph_", i, ".png", sep="")
-#   png(file_name)
-#   print(plot_list[[i]])
-#   dev.off()
-# }
+int <- as_tibble(st_intersection(sauv, isauv))
+int$area <- st_area(int$geometry)
+int
+overlaps <- int %>%
+  group_by(binomial) %>%
+  summarise(area = sum(area))
+int
 
+
+#square of 2 x 2
+pol = st_polygon(list(rbind(c(0,0), c(2,0), c(2,2), c(0,2), c(0,0))))
+#add two more squares of 2 x 2
+b = st_sfc(pol, pol + c(.8, .2), pol + c(4, .8))
+b
+plot(b)
+l <- lapply( sauv, function(x) { # to get these working on the full data set probably just need to set it to df[2,]
+  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() ) 
+})
+matrix(unlist(l), ncol = length(b), byrow = TRUE)
+l2 <- lapply( sauv, function(x) { 
+  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+})
+matrix(unlist(l2), ncol = length(b), byrow = TRUE)
