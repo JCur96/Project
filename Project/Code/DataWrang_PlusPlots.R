@@ -169,14 +169,24 @@ merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf
 merged <- rbind(IUCN_filtered, filtered_buffer)
 isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
 sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
-
-sauv <- rbind(isauv, sauv)
-sauv <- st_cast(sauv, "POLYGON")
 myvar = c("geometry")
 sauv <- sauv[myvar]
-sauv <- st_transform(sauv, 2163)
-sauv <- st_geometry(sauv) #### very important, cast to the correct sf type (in this case needs to be sfc_POLYGON and sfc)
+isauv <- isauv[myvar]
+
+sauv <- st_combine(sauv)
+sauv <- st_union(sauv, by_feature = T) # up to here is promising, I get a single geometry for NHM data
+sauv <- st_cast(sauv, "POLYGON") # still gives two polygons irritatigly 
 class(sauv)
+
+isauv <- st_combine(isauv)
+isauv <- st_union(isauv, by_feature = T)
+isauv <- st_geometry(isauv)
+isauv <- st_cast(isauv, "POLYGON")
+class(isauv)
+
+sauv <- c(sauv, isauv)
+sauv <- st_transform(sauv, 2163)
+# potentiall a bit dodgy, but it does produce two polygons and how much they overlap
 
 l <- lapply(sauv, function(x) { 
   lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
