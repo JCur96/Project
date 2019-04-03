@@ -165,23 +165,48 @@ for (var in unique(IUCN_filtered$binomial)) {
 # maybe pull the single row out of iucn and add it to buffer data is simpler
 # add a label column, so that IUCN data is called such, and NHM is called such 
 
-merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf objects is to use c
-merged <- rbind(IUCN_filtered, filtered_buffer)
+# myvar = c("geometry")
+# merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf objects is to use c
+# merged <- rbind(IUCN_filtered, filtered_buffer)
+# merged <- merged[myvar]
+overlaps <- list()
+for (var in unique(IUCN_filtered$binomial)) {
+  IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
+  NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]  
+  
+  NHM_var <- st_combine(NHM_var)
+  NHM_var <- st_union(NHM_var, by_feature = T)
+  
+  IUCN_var <- st_combine(IUCN_var)
+  IUCN_var <- st_union(IUCN_var, by_feature = T)
+  
+  merged <- c(NHM_var, IUCN_var)
+  merged <- st_transform(merged, 2163)
+  
+  l <- lapply(merged, function(x) { 
+    lapply(merged, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+  })
+  overlaps[[var]] <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)  
+  
+}
+
+
+# single spp working eg 
 isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
 sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
-myvar = c("geometry")
-sauv <- sauv[myvar]
-isauv <- isauv[myvar]
+
+# myvar = c("geometry") # dont actually need to remove this
+# sauv <- sauv[myvar]
+# isauv <- isauv[myvar]
 
 sauv <- st_combine(sauv)
 sauv <- st_union(sauv, by_feature = T) # up to here is promising, I get a single geometry for NHM data
-sauv <- st_cast(sauv, "POLYGON") # still gives two polygons irritatigly 
 class(sauv)
 
 isauv <- st_combine(isauv)
 isauv <- st_union(isauv, by_feature = T)
-isauv <- st_geometry(isauv)
-isauv <- st_cast(isauv, "POLYGON")
+#isauv <- st_geometry(isauv)
+#isauv <- st_cast(isauv, "POLYGON")
 class(isauv)
 
 sauv <- c(sauv, isauv)
@@ -191,6 +216,10 @@ sauv <- st_transform(sauv, 2163)
 l <- lapply(sauv, function(x) { 
   lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
 })
-matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
+overlaps <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
+overlaps
+plot(sauv)
+
+
 
 
