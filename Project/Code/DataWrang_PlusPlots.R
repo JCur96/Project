@@ -60,7 +60,7 @@
 # install.packages("devtools")
 # library(devtools)
 # devtools::install_github('cran/ggplot2')
-install.packages("lwgeom")
+# install.packages("lwgeom")
 library(lwgeom)
 library(tidyverse)
 library(dplyr)
@@ -155,46 +155,32 @@ for (var in unique(IUCN_filtered$binomial)) {
 # polygonise the buffer 
 # then the overlap function may well work
 # hopefully then can do a lapply
-?st_polygonize
-?st_intersection
-?st_area
 # for the below to work, need a single list of spp and the geometrys from both NHM + IUCN
 # buffer is already a polygon, which makes life easier (removes a step)
 
-
+######Single working test case for overlap calculations #######
+# currently does not differentiate between IUCN and NHM data overlaps, so need to work that out next
+# need to get it to work on the whole data set 
 
 # maybe pull the single row out of iucn and add it to buffer data is simpler
+# add a label column, so that IUCN data is called such, and NHM is called such 
+
 merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf objects is to use c
 merged <- rbind(IUCN_filtered, filtered_buffer)
 isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
 sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
+
 sauv <- rbind(isauv, sauv)
 sauv <- st_cast(sauv, "POLYGON")
 myvar = c("geometry")
 sauv <- sauv[myvar]
 sauv <- st_transform(sauv, 2163)
-sauv
+sauv <- st_geometry(sauv) #### very important, cast to the correct sf type (in this case needs to be sfc_POLYGON and sfc)
+class(sauv)
 
-int <- as_tibble(st_intersection(sauv, isauv))
-int$area <- st_area(int$geometry)
-int
-overlaps <- int %>%
-  group_by(binomial) %>%
-  summarise(area = sum(area))
-int
-
-
-#square of 2 x 2
-pol = st_polygon(list(rbind(c(0,0), c(2,0), c(2,2), c(0,2), c(0,0))))
-#add two more squares of 2 x 2
-b = st_sfc(pol, pol + c(.8, .2), pol + c(4, .8))
-b
-plot(b)
-l <- lapply( sauv, function(x) { # to get these working on the full data set probably just need to set it to df[2,]
-  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() ) 
-})
-matrix(unlist(l), ncol = length(b), byrow = TRUE)
-l2 <- lapply( sauv, function(x) { 
+l <- lapply(sauv, function(x) { 
   lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
 })
-matrix(unlist(l2), ncol = length(b), byrow = TRUE)
+matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
+
+
