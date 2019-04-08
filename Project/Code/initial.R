@@ -246,7 +246,35 @@ MapPlot+geom_sf(mapping = aes(alpha = 0.1, color=IUCN$binomial), data = IUCN, sh
 # R is simply used as an interface for another program really. As such this is unlikely to play nice with a lot of R stuff I think
 
 
+########## percent overlaps ###############
+# single spp working eg 
+isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
 
+# myvar = c("geometry") # dont actually need to remove this
+# sauv <- sauv[myvar]
+# isauv <- isauv[myvar]
+
+sauv <- st_combine(sauv)
+sauv <- st_union(sauv, by_feature = T) # up to here is promising, I get a single geometry for NHM data
+class(sauv)
+
+isauv <- st_combine(isauv)
+isauv <- st_union(isauv, by_feature = T)
+#isauv <- st_geometry(isauv)
+#isauv <- st_cast(isauv, "POLYGON")
+class(isauv)
+
+sauv <- c(sauv, isauv)
+sauv <- st_transform(sauv, 2163)
+# potentiall a bit dodgy, but it does produce two polygons and how much they overlap
+
+l <- lapply(sauv, function(x) { 
+  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+})
+overlaps <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
+overlaps
+plot(sauv)
 
 #########################################messy sandbox#####################################
 
@@ -272,7 +300,108 @@ MapPlot+geom_sf(mapping = aes(alpha = 0.1, color=IUCN$binomial), data = IUCN, sh
 # how to do it in python https://stackoverflow.com/questions/18150434/convert-from-kilometers-km-to-decimal-degrees maybe write and call a 
 # python script?
 #
-#
-#
+############## overlaps ############
+# seeing if I can get type status associated with a percent overlap here
+# single spp first
+isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+isauv <- st_transform(isauv, 2163)
+sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- st_transform(sauv, 2163)
+sauv <- rbind(sauv, isauv)
+# myvar = c("geometry") # dont actually need to remove this
+# sauv <- sauv[myvar]
+# isauv <- isauv[myvar]
 
+# sauv <- c(sauv, isauv) # need to get IUCN typestatus into it as a factor, doesn't turn into factor with this method
+sauv <- st_transform(sauv, 2163)
+# sauv <- sauv[c("binomial", "geometry")]
+sauv <- sauv[c("binomial", "geometry", "TypeStatus")]
+sauv <- st_geometry(sauv) # need to change to geometry to get code to work if doing this method
+class(sauv)
+# potentiall a bit dodgy, but it does produce two polygons and how much they overlap
+
+l <- lapply(sauv, function(x) { 
+  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+})
+overlaps <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
+overlaps
+
+
+# might be on to something here, atomise NHM data so for each entry individual
+# entry we get a percent overlap with the IUCN, it has to take two 
+# seperate data frames for this, the IUCN and NHM ones seperately
+# this actualy works and produces a vector of overlaps if used all at once
+# need to append these to a new col on NHM df of %overlaps
+isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+isauv <- st_transform(isauv, 2163)
+sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- st_transform(sauv, 2163)
+# sauv <- st_geometry(sauv)
+# isauv <- st_geometry(isauv)
+
+
+
+# what I want to do is 
+# for each element in the list, compute the overlap with this other list
+
+
+overlaps <- function(df1, df2) {
+  #df1$PercentOverlap <- NA
+  overlap <- st_intersection(df1, df2) %>% st_area() * 100 /sqrt(st_area(df1) * st_area(df2))
+  #print(df1$PercentOverlap)
+  overlap <- drop_units(overlap)
+  overlap <- as.list(overlap)
+  #class(overlap)
+  return(overlap)
+}
+
+overlaps(sauv,isauv)
+
+over_fun <- function(df1, df2) {
+  df1[,"Percent_overlap"] <- NA
+  for (i in df1$geometry) {
+    x <- df1[i]
+    df1$Percent_overlap <- overlaps(x, df2$geometry)
+  }
+  # arg_name <- deparse(substitute(df1)) # Get argument name
+  # var_name <- paste("updated", arg_name, sep="_") # Construct the name
+  # assign(var_name, df1, env=.GlobalEnv) # Assign values to variable
+  # # variable will be created in .GlobalEnv 
+  df1 <<- data.frame(df1)
+  return(df1)
+}
+
+over_fun(sauv, isauv)
+
+
+#### working to here, need to think about how to do it on a 
+# per spp basis 
+for (var in unique(IUCN_filtered$binomial)) {
+  IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var,] 
+  NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]
   
+  NHM_var <- st_transform(NHM_var, 2163)
+  IUCN_var <- st_transform(IUCN_var, 2163)
+  
+  over_fun(NHM_var, IUCN_var)
+}
+
+
+over_fun(filtered_buffer, IUCN_filtered) # nearly there
+
+
+# then all spp 
+overlaps <- list()
+for (var in unique(IUCN_filtered$binomial)) {
+  IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
+  NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]  
+  
+  merged <- c(NHM_var, IUCN_var)
+  merged <- st_transform(merged, 2163)
+  
+  l <- lapply(merged, function(x) { 
+    lapply(merged, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+  })
+  m <- matrix(unlist(l), ncol = length(merged), byrow = TRUE) 
+  overlaps[[var]] <- m[1,2]
+} 

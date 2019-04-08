@@ -61,6 +61,8 @@
 # library(devtools)
 # devtools::install_github('cran/ggplot2')
 # install.packages("lwgeom")
+# install.packages("units")
+library(units)
 library(lwgeom)
 library(tidyverse)
 library(dplyr)
@@ -101,7 +103,8 @@ IUCN <- st_as_sf(IUCN)
 IUCN <- st_transform(IUCN, 4326) 
 # pulling out the parts we actually need
 # myvars <- c("binomial", "SHAPE_Leng", "SHAPE_Area", "geometry") 
-myvars <- c("binomial", "geometry") 
+myvars <- c("binomial", "TypeStatus", "geometry") 
+IUCN$TypeStatus <- "IUCN"
 IUCN <- IUCN[myvars]
 # removes spaces from spp_genus
 IUCN$binomial <- gsub(' ', '_', IUCN$binomial) 
@@ -124,8 +127,7 @@ NHM_AMPH_filtered <- st_transform(NHM_AMPH_filtered, "+proj=utm +zone=42N +datum
 buffer <- st_buffer(NHM_AMPH_filtered, NHM_AMPH_filtered$Extent_km) 
 # transforms it back to coord based projection
 buffer <- st_transform(buffer, 4326) 
-tokeep <- c("binomial", "geometry")
-filtered_buffer <- buffer[tokeep]
+filtered_buffer <- buffer[myvars]
 
 # making sensible bounds for a map
 sfbbox <- st_bbox(buffer) # getting the bbox but with the corrected datum
@@ -138,88 +140,184 @@ ylim <- c(bbox[2], bbox[4])
 # binomial names as individual var's
 ### I dont think this is adding all the points we have to it, only the first one
 ### need to fix that, maybe a match == T type statement in there
-for (var in unique(IUCN_filtered$binomial)) { 
-  IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
-  NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]
-  p = ggplot(data = SAMap) + # making a map
-    geom_sf() + # plotting a world map 
-    geom_sf(mapping = aes(alpha = 0.5, fill ="blue"), data = NHM_var, show.legend = F) + # adding NHM point-radius
-    geom_sf(mapping = aes(alpha = 0.1, fill = "red"), data = IUCN_var, show.legend = F) + # adding IUCN maps
-    coord_sf(xlim = xlim, ylim = ylim, expand = T) # zooming to correct cords (South America)
-    png(paste("../Output/IUCN_Range_Graphs/Graph_", var, ".png", sep=""), width=600, height=500, res=120) #saving map as png
-    print(p) # printing to png 
-    dev.off() # not sending to screen
-}
+# for (var in unique(IUCN_filtered$binomial)) {
+#   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ]
+#   NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]
+#   p = ggplot(data = SAMap) + # making a map
+#     geom_sf() + # plotting a world map
+#     geom_sf(mapping = aes(alpha = 0.5, fill ="blue"), data = NHM_var, show.legend = F) + # adding NHM point-radius
+#     geom_sf(mapping = aes(alpha = 0.1, fill = "red"), data = IUCN_var, show.legend = F) + # adding IUCN maps
+#     coord_sf(xlim = xlim, ylim = ylim, expand = T) # zooming to correct cords (South America)
+#     png(paste("../Output/IUCN_Range_Graphs/Graph_", var, ".png", sep=""), width=600, height=500, res=120) #saving map as png
+#     print(p) # printing to png
+#     dev.off() # not sending to screen
+# }
 
-# now for overlaps 
-# polygonise the buffer 
-# then the overlap function may well work
-# hopefully then can do a lapply
-# for the below to work, need a single list of spp and the geometrys from both NHM + IUCN
-# buffer is already a polygon, which makes life easier (removes a step)
-
-######Single working test case for overlap calculations #######
-# currently does not differentiate between IUCN and NHM data overlaps, so need to work that out next
-# need to get it to work on the whole data set 
-
-# maybe pull the single row out of iucn and add it to buffer data is simpler
-# add a label column, so that IUCN data is called such, and NHM is called such 
-
-# myvar = c("geometry")
-# merged <- c(filtered_buffer, IUCN_filtered) #as it turns out the wya to merge sf objects is to use c
-# merged <- rbind(IUCN_filtered, filtered_buffer)
-# merged <- merged[myvar]
-overlaps <- list()
-for (var in unique(IUCN_filtered$binomial)) {
-  IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
-  NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]  
-  
-  NHM_var <- st_combine(NHM_var)
-  NHM_var <- st_union(NHM_var, by_feature = T)
-  
-  IUCN_var <- st_combine(IUCN_var)
-  IUCN_var <- st_union(IUCN_var, by_feature = T)
-  
-  merged <- c(NHM_var, IUCN_var)
-  merged <- st_transform(merged, 2163)
-  
-  l <- lapply(merged, function(x) { 
-    lapply(merged, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
-  })
-  overlaps[[var]] <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)  
-  
-}
+######working percent overlap calculations ######
+# need to keep type data, and add type col to IUCN (all vars within are just IUCN)
+# probably nice to keep just total percentage overlap as that is interesting
+# the below works! You get a list of overlap matrices for single polygons
 
 
-# single spp working eg 
+# overlaps <- list()
+# for (var in unique(IUCN_filtered$binomial)) {
+#   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
+#   NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]  
+#   
+#   NHM_var <- st_combine(NHM_var)
+#   NHM_var <- st_union(NHM_var, by_feature = T)
+#   
+#   IUCN_var <- st_combine(IUCN_var)
+#   IUCN_var <- st_union(IUCN_var, by_feature = T)
+#   
+#   merged <- c(NHM_var, IUCN_var)
+#   merged <- st_transform(merged, 2163)
+#   
+#   l <- lapply(merged, function(x) { 
+#     lapply(merged, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+#   })
+#   m <- matrix(unlist(l), ncol = length(merged), byrow = TRUE) 
+#   overlaps[[var]] <- m[1,2]
+#   
+# }
+# 
+# df <- overlaps %>% as.data.frame() %>% gather(key ="binomial", value = "percent_overlap")
+# write.csv(df, file = "../Output/Percent_overlaps.csv")
+
+# seeing if I can get type status associated with a percent overlap here
+# single spp first
+# might be on to something here, atomise NHM data so for each entry individual
+# entry we get a percent overlap with the IUCN, it has to take two 
+# seperate data frames for this, the IUCN and NHM ones seperately
+# this actualy works and produces a vector of overlaps if used all at once
+# need to append these to a new col on NHM df of %overlaps
 isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+isauv <- st_transform(isauv, 2163)
 sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
-
-# myvar = c("geometry") # dont actually need to remove this
-# sauv <- sauv[myvar]
-# isauv <- isauv[myvar]
-
-sauv <- st_combine(sauv)
-sauv <- st_union(sauv, by_feature = T) # up to here is promising, I get a single geometry for NHM data
-class(sauv)
-
-isauv <- st_combine(isauv)
-isauv <- st_union(isauv, by_feature = T)
-#isauv <- st_geometry(isauv)
-#isauv <- st_cast(isauv, "POLYGON")
-class(isauv)
-
-sauv <- c(sauv, isauv)
 sauv <- st_transform(sauv, 2163)
-# potentiall a bit dodgy, but it does produce two polygons and how much they overlap
-
-l <- lapply(sauv, function(x) { 
-  lapply(sauv, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
-})
-overlaps <- matrix(unlist(l), ncol = length(sauv), byrow = TRUE)
-overlaps
-plot(sauv)
 
 
+overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
+  overlap <- st_intersection(df1, df2) %>% st_area() * 100 /sqrt(st_area(df1) * st_area(df2))
+  overlap <- drop_units(overlap) # at this point the output is of class "units" which don't play nice 
+  overlap <- as.list(overlap) 
+  return(overlap) # returns the result, so can be passed to another fun 
+}
+
+overlaps(sauv,isauv)
+
+over_fun <- function(df1, df2) {
+  df1[,"Percent_overlap"] <- NA # adds a column of na's
+  for (i in df1$geometry) { # for each row in first df's geometry col
+    x <- df1[i] # assign that row to local variable x 
+    # need that otherwise the nonsensicle error of CRS doesn't match
+    df1$Percent_overlap <- overlaps(x, df2$geometry) # use previous fun to calculate overlaps
+    # and append to the percent overlap col 
+  }
+  return(df1) # return the modified df for use in another fun 
+}
+
+over_fun(sauv, isauv)
+
+#### working to here, need to think about how to do it on a 
+# per spp basis 
+full_overlaps <- function(NHM_df, IUCN_df) {
+  #NHM_df[,"Percent_overlap"] <- NA
+  output <- c()
+  for (var in unique(NHM_df$binomial)) {
+    # find all entries in both dfs which match var
+    # might need to use cut() here as that has fixed errors for others
+    IUCN_var <- IUCN_df[IUCN_df$binomial == var,] 
+    NHM_var <- NHM_df[NHM_df$binomial == var,]
+    
+    NHM_var <- st_transform(NHM_var, 2163) # ensure planar crs is in use
+    IUCN_var <- st_transform(IUCN_var, 2163)
+    # print(NHM_var)
+    # then pass to the over_function
+    # try(over_fun(NHM_var, IUCN_var))
+    x <- over_fun(NHM_var, IUCN_var)
+    output <- rbind(x, output)
+    #df1.append(df1) # need to rebuild the whole df here I think
+  }
+  output <<- data.frame(output)
+  # arg_name <- deparse(substitute(df1)) # Get argument name
+  # var_name <- paste("updated", arg_name, sep="_") # Construct the name
+  # assign(var_name, df1, env=.GlobalEnv) # Assign values to variable
+  # # variable will be created in .GlobalEnv
+  return(output)
+}
 
 
+partial_NHM <- filtered_buffer[1:9,]
+partial_IUCN <- IUCN_filtered %>% filter(binomial %in% partial_NHM$binomial)
+full_overlaps(partial_NHM, partial_IUCN)
+
+filtered_buffer <- filtered_buffer[!(filtered_buffer$binomial=="Scinax_fuscomarginatus"),]
+IUCN_filtered <- IUCN_filtered[!(IUCN_filtered$binomial=="Scinax_fuscomarginatus"),]
+
+full_overlaps(filtered_buffer, IUCN_filtered)
+
+test <- filtered_buffer[23,]
+Itest <- IUCN_filtered %>% filter(binomial %in% test)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # this bit does much more than previous bits! 
+# # returns only the last binom to be done, but thats something
+# for (i in filtered_buffer$binomial) {
+#   N <- filtered_buffer[filtered_buffer$binomial == i,]
+#   I <- IUCN_filtered[IUCN_filtered$binomial == i,] 
+#   
+#   N <- st_transform(N, 2163)
+#   I <- st_transform(I, 2163)
+#   
+#   over_fun(N,I)
+# }
+# 
+# over_fun(filtered_buffer, IUCN_filtered)
+# # throws a bunch of warnings which can be ignored 
+# # as the data are spatially constant throughout 
+# # throws a weird error about undefined columns but works 
+# # just fine nonetheless 
+# 
+# 
+# filtered_buffer[,"Percent_overlap"] <- NA
+# 
+# 
+# 
+# for (var in unique(filtered_buffer$binomial)) {
+#   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var,] 
+#   NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]
+#   
+#   NHM_var <- st_transform(NHM_var, 2163)
+#   IUCN_var <- st_transform(IUCN_var, 2163)
+#   
+#   over_fun(NHM_var, IUCN_var)
+# }
+# 
+# 
+# for (var in binomial) {
+#   # find all entries in both dfs which match var
+#   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var,]
+#   NHM_var <- filtered_buffer[filtered_buffer$binomial ==var,]
+#   for (i in var) {
+#     # for each of those entries, calculate the overlap between dfs
+#     over_fun(i, ) 
+#   }
+# }
+# 
+# 
+# over_fun(filtered_buffer, IUCN_filtered) # nearly there
