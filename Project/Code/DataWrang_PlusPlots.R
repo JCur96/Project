@@ -195,23 +195,68 @@ isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),
 isauv <- st_transform(isauv, 2163)
 sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
 sauv <- st_transform(sauv, 2163)
+str(isauv)
+str(sauv)
 
+### overlap functions ####
 
 overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
+  # transform back to sfc df here 
+  #df1 <- as.data.frame(df1)
+  #df2 <- as.data.frame(df2)
+  #df1 <- st_as_sf(df1)
+  #df2 <- st_as_sf(df2)
+  #df1 <- as.data.frame(df1)
+  #df1 <- st_as_sfc(df1)
+  #df1 <- data.frame(unlist(df1), nrow = length(df1), byrow = T)
+  #df1 <- st_geometry(df1)
+  #df2 <- st_geometry(df2)
+  #df1 <- st_transform(df1, 2163)
+  #df2 <- st_transform(df2, 2163)
+  #df1 <- st_as_sfc(df1)
+  #print(df1)
+  #df2 <- st_as_sfc(df2)
+  #str(df1)
   overlap <- st_intersection(df1, df2) %>% st_area() * 100 /sqrt(st_area(df1) * st_area(df2))
   overlap <- drop_units(overlap) # at this point the output is of class "units" which don't play nice 
   overlap <- as.list(overlap) 
   return(overlap) # returns the result, so can be passed to another fun 
 }
 
-overlaps(sauv,isauv)
+
+overlaps(sauv,isauv) # convert sf object to just a df
+# then within the function convert it back to as sf object using st_as_sf()
+# maybe feed this to lapply as a list
+sauv <- as.data.frame(sauv)
+isauv <- as.data.frame(isauv)
+str(sauv)
+# sauv <- as.list(sauv)
+sauv <- st_as_sf(sauv)
+class(sauv)
+head(sauv)
+# isauv <- as.list(isauv)
+isauv <- as.data.frame(isauv)
+apply(sauv, 1, overlaps, isauv) # will need to tweak the overlaps function to make this work
 
 over_fun <- function(df1, df2) {
   df1[,"Percent_overlap"] <- NA # adds a column of na's
-  for (i in df1$geometry) { # for each row in first df's geometry col
-    x <- df1[i] # assign that row to local variable x 
+  #df1 <- st_transform(df1, 2163)
+  #df2 <- st_transform(df2, 2163)
+  for (row in 1:nrow(df1)) { # for each row in first df's geometry col
+    geom <- df1$geometry[row]
+    #x <- df1[i] # assign that row to local variable x 
     # need that otherwise the nonsensicle error of CRS doesn't match
-    df1$Percent_overlap <- overlaps(x, df2$geometry) # use previous fun to calculate overlaps
+    print(geom)
+    print("break")
+    #print(str(i))
+    #print("break")
+    #print(df1$geometry[1])
+    #print(str(df1$geometry[1]))
+    #x <- df1[which(df1$geometry==i),]
+    #y <- df2[]
+    #print(y)
+    #print(df2$geometry)
+    df1$Percent_overlap[row] <- overlaps(geom, df2$geometry) # use previous fun to calculate overlaps
     # and append to the percent overlap col 
   }
   return(df1) # return the modified df for use in another fun 
@@ -219,10 +264,13 @@ over_fun <- function(df1, df2) {
 
 over_fun(sauv, isauv)
 
+
 #### working to here, need to think about how to do it on a 
 # per spp basis 
 full_overlaps <- function(NHM_df, IUCN_df) {
   #NHM_df[,"Percent_overlap"] <- NA
+  #NHM_df <- arrange(NHM_df, binomial)
+  #IUCN_df <- arrange(IUCN_df, binomial)
   output <- c()
   for (var in unique(NHM_df$binomial)) {
     # find all entries in both dfs which match var
@@ -248,21 +296,22 @@ full_overlaps <- function(NHM_df, IUCN_df) {
 }
 
 
-partial_NHM <- filtered_buffer[1:9,]
-partial_IUCN <- IUCN_filtered %>% filter(binomial %in% partial_NHM$binomial)
-full_overlaps(partial_NHM, partial_IUCN)
-
-filtered_buffer <- filtered_buffer[!(filtered_buffer$binomial=="Scinax_fuscomarginatus"),]
-IUCN_filtered <- IUCN_filtered[!(IUCN_filtered$binomial=="Scinax_fuscomarginatus"),]
-
 full_overlaps(filtered_buffer, IUCN_filtered)
 
-test <- filtered_buffer[23,]
-Itest <- IUCN_filtered %>% filter(binomial %in% test)
 
 
 
+test <- group_by(filtered_buffer, binomial)
+test
+IUCN_filtered <- group_by(IUCN_filtered, binomial)
 
+
+partial_NHM <- filtered_buffer[which(!filtered_buffer$binomial == "Pleurodema_cinereum"),]
+partial_NHM <- partial_NHM[1:10,]
+partial_NHM <- arrange(partial_NHM, binomial)
+partial_IUCN <- IUCN_filtered %>% filter(binomial %in% partial_NHM$binomial)
+
+full_overlaps(partial_NHM, partial_IUCN)
 
 
 
