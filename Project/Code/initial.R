@@ -405,3 +405,49 @@ for (var in unique(IUCN_filtered$binomial)) {
   m <- matrix(unlist(l), ncol = length(merged), byrow = TRUE) 
   overlaps[[var]] <- m[1,2]
 } 
+
+
+######working percent overlap calculations ######
+# need to keep type data, and add type col to IUCN (all vars within are just IUCN)
+# probably nice to keep just total percentage overlap as that is interesting
+# the below works! You get a list of overlap matrices for single polygons
+
+
+# overlaps <- list()
+# for (var in unique(IUCN_filtered$binomial)) {
+#   IUCN_var <- IUCN_filtered[IUCN_filtered$binomial == var, ] 
+#   NHM_var <- filtered_buffer[filtered_buffer$binomial == var,]  
+#   
+#   NHM_var <- st_combine(NHM_var)
+#   NHM_var <- st_union(NHM_var, by_feature = T)
+#   
+#   IUCN_var <- st_combine(IUCN_var)
+#   IUCN_var <- st_union(IUCN_var, by_feature = T)
+#   
+#   merged <- c(NHM_var, IUCN_var)
+#   merged <- st_transform(merged, 2163)
+#   
+#   l <- lapply(merged, function(x) { 
+#     lapply(merged, function(y) st_intersection( x, y ) %>% st_area() * 100 /sqrt( st_area(x) * st_area(y) ) ) 
+#   })
+#   m <- matrix(unlist(l), ncol = length(merged), byrow = TRUE) 
+#   overlaps[[var]] <- m[1,2]
+#   
+# }
+# 
+# df <- overlaps %>% as.data.frame() %>% gather(key ="binomial", value = "percent_overlap")
+# write.csv(df, file = "../Output/Percent_overlaps.csv")
+
+# seeing if I can get type status associated with a percent overlap here
+# single spp first
+# might be on to something here, atomise NHM data so for each entry individual
+# entry we get a percent overlap with the IUCN, it has to take two 
+# seperate data frames for this, the IUCN and NHM ones seperately
+# this actualy works and produces a vector of overlaps if used all at once
+# need to append these to a new col on NHM df of %overlaps
+isauv <- IUCN_filtered[which(IUCN_filtered$binomial == "Phyllomedusa_sauvagii"),]
+isauv <- st_transform(isauv, 2163)
+sauv <- filtered_buffer[which(filtered_buffer$binomial == "Phyllomedusa_sauvagii"),]
+sauv <- st_transform(sauv, 2163)
+str(isauv)
+str(sauv)
