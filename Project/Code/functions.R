@@ -1,9 +1,14 @@
-# #!/usr/bin/env Rscript 
+#!/usr/bin/env Rscript 
 # functions.R
 # script to hold the functions + what they're meant to do
 # so that I have at least one working script to demo
 
+
 correctColName <- function(df) {
+  # needs usr input, so probably a 
+  # colnames(df) # followed by a 
+  # colToChange <- readline(prompt = 'please enter column index to rename to binomial: ')
+  # colnames(df)[colToChange] <- 'binomial'
   colnames(df)[7] <- "binomial" # this one might need to be a little more general
 }
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
@@ -120,7 +125,7 @@ ylim <- c(bbox[2], bbox[4])
 ## binomial names as individual var's
 ## I dont think this is adding all the points we have to it, only the first one
 ## need to fix that, maybe a match == T type statement in there
-plotMaps <- function(df1, df2) {
+plotMaps <- function(df1, df2) { # replace the png(paste) with a prompt eg  path <- readline(prompt = 'enter path: ')
   for (var in unique(df1$binomial)) {
     IUCN_var <- df2[df2$binomial == var,]
     NHM_var <- df1[df1$binomial == var,]
@@ -129,6 +134,8 @@ plotMaps <- function(df1, df2) {
       geom_sf(mapping = aes(alpha = 0.5, fill='blue'), data = NHM_var, show.legend = F) +
       geom_sf(mapping = aes(alpha = 0.1, fill = "red"), data = IUCN_var, show.legend = F) + # adding IUCN maps
       coord_sf(xlim = xlim, ylim = ylim, expand = T) # zooming to correct cords (South America)
+    # path <- readline(prompt = 'Enter path: ')
+    # png(paste(path, var, '.png', sep=''). width=600, height=500, res=120)
     png(paste("../Output/IUCN_Range_Graphs/Graph_", var, ".png", sep=""), width=600, height=500, res=120) #saving map as png
     print(p) # printing to png
     dev.off() # not sending to screen
