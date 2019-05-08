@@ -77,6 +77,8 @@ library(rgdal)
 library(maptools)
 ###################Data_Wrangling################
 ####### NHM collections data #######
+df <- read.csv('../Data/WorkingSouthAmerica.csv', header=T)
+prepNHMData(df) # it works!
 NHM_AMPH <- read.csv("../Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
 NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) 
@@ -211,3 +213,33 @@ full_overlaps(filtered_buffer, IUCN_filtered) # sooo funny thing, the percent ov
 # i.e. IUCN + NHM shaded = total shaded
 # overlaps returns % of total shaded that is both IUCN and NHM
 # fixed that! 
+
+
+
+##### analysis stuff 
+#' Probably want to see about calculating both the 
+#' Area of Occupancy AOO
+#' and Extent of Occurence EOO
+#' Use IUCN guidlines for this
+#' EOO is done via summing area of triangles left after an
+#' elimination process described on pages 47/48 of 
+#' http://cmsdocs.s3.amazonaws.com/RedListGuidelines.pdf
+#' AOO is calculated using this equaiton 
+#' AOO = no. occupied cells × area of an individual cell
+#' given on page 50 of the linked document
+#' cells in this case are specified to be 2mx2m grid sqaures
+#' which could make things a little interesting
+#' 
+#' clipping to landmass appears to be possible using
+#' something similar to this 
+#' https://stackoverflow.com/questions/49266736/clip-spatial-polygon-by-world-map-in-r
+#' which amusingly involves messing around with 
+#' union and difference again
+#' to generalise this could be interesting 
+#' this is also of interest 
+#' https://gis.stackexchange.com/questions/93096/how-to-perform-a-true-gis-clip-of-polygons-layer-using-a-polygon-layer-in-r
+NHM <- NHM_AMPH_filtered 
+IUCN <- IUCN_filtered
+
+st_convex_hull(x) # makes a convex hull out of geometry I think
+st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
