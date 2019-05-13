@@ -59,9 +59,19 @@
 ####################Imports######################
 # install.packages("devtools")
 # library(devtools)
-# devtools::install_github('cran/ggplot2')
+# devtools::install_github("cran/ggplot2") # need to remove the auth token from env for this to work
 # install.packages("lwgeom")
 # install.packages("units")
+# install.packages("tidyverse")
+# install.packages("rgdal")
+# install.packages("rgeos")
+# install.packages("sf")
+# install.packages("ggplot2")
+# install.packages("ggforce")
+# install.packages("ggmap")
+# install.packages("mapdata")
+# install.packages("maptools")
+# install.packages("maps")
 library(units)
 library(lwgeom)
 library(tidyverse)
@@ -238,8 +248,39 @@ full_overlaps(filtered_buffer, IUCN_filtered) # sooo funny thing, the percent ov
 #' to generalise this could be interesting 
 #' this is also of interest 
 #' https://gis.stackexchange.com/questions/93096/how-to-perform-a-true-gis-clip-of-polygons-layer-using-a-polygon-layer-in-r
-NHM <- NHM_AMPH_filtered 
+NHM <- NHM_AMPH_filtered
 IUCN <- IUCN_filtered
 
+
+
 st_convex_hull(x) # makes a convex hull out of geometry I think
+test <- st_convex_hull(test)
+
+# The below seems to produce what I expect it to
+# So thats some progress 
+# Can probably use this to compute centroid-centroid distance
+# Or centroid-edge distance (Probably harder as thats for two different geometry collections)
+test <- NHM[5,]
+test_cent <- test$geometry
+test <- st_buffer(test, test$Extent_km) 
+test$Centroid <- NA
+test$Centroid <- st_centroid(test$geometry)
+print(test_cent)
+print(test$Centroid)
+# I think the below works are expected as well
+# the geometry certainly changes 
+# think I should probably map this to see what happens
+
+print(test$geometry)
+test <- st_convex_hull(test)
+print(test$geometry)
+test
 st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
+
+# I think what I need to do with the convex hulls is to take all the points for a spp 
+# and make it into a convex hull (alpha shape) 
+# should be able to do this in a for loop a lot like the 
+# graphing I think
+
+# Still need to work out something for clipping to landmasses 
+# 
