@@ -87,8 +87,8 @@ library(rgdal)
 library(maptools)
 ###################Data_Wrangling################
 ####### NHM collections data #######
-df <- read.csv('../Data/WorkingSouthAmerica.csv', header=T)
-prepNHMData(df) # it works!
+# df <- read.csv('../Data/WorkingSouthAmerica.csv', header=T)
+# prepNHMData(df) # it works!
 NHM_AMPH <- read.csv("../Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
 NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) 
@@ -282,14 +282,28 @@ test
 st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
 
 
-# formailise it a little here in a for loop
-convex_hulls <- function(df) {
-  for (var in unique(df$binomial)) {
-    spp <- df[df$binomial == var,]
-    NAME <- st_convex_hull(st_combine(spp))
+NHM <- filtered_buffer 
+for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
+  # as it makes one convex hull per spp entry, not per row
+  test <- NHM[NHM$binomial == var,]
+  hull <- st_convex_hull(st_combine(NHM$geometry[test]))
+  #print(hull)
+  for (row in 1:nrow(test)) {
+    NHM$convex_hull <- hull[row]
+    #print(test)
+    #print(var)
+    print(row) # shows that it cats stuff quite a bit 
+    #i <- test[test$binomial == row,]
+    #NHM$convex_hull <- hull[i]
   }
-  return(code)
+  NHM$convex_hull <- hull[test]
+  # test <- NHM[NHM$binomial == var,]
+  # hull <- st_convex_hull(st_combine(test))
+  # test$convex_hull <- hull
+  # 
 }
+
+
 
 
 # I think what I need to do with the convex hulls is to take all the points for a spp 
