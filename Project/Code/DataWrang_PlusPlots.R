@@ -286,17 +286,18 @@ NHM <- filtered_buffer
 for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
   # as it makes one convex hull per spp entry, not per row
   test <- NHM[NHM$binomial == var,]
-  hull <- st_convex_hull(st_combine(NHM$geometry[test]))
-  #print(hull)
-  for (row in 1:nrow(test)) {
-    NHM$convex_hull <- hull[row]
-    #print(test)
-    #print(var)
-    print(row) # shows that it cats stuff quite a bit 
-    #i <- test[test$binomial == row,]
-    #NHM$convex_hull <- hull[i]
-  }
-  NHM$convex_hull <- hull[test]
+  print(test)
+  NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
+  print(NHM$convex_hull)
+  # for (row in 1:nrow(test)) {
+  #   NHM$convex_hull <- hull[row]
+  #   #print(test)
+  #   #print(var)
+  #   #print(NHM$convex_hull) # shows that it cats stuff quite a bit 
+  #   #i <- test[test$binomial == row,]
+  #   #NHM$convex_hull <- hull[i]
+  # }
+  # NHM$convex_hull <- hull[test]
   # test <- NHM[NHM$binomial == var,]
   # hull <- st_convex_hull(st_combine(test))
   # test$convex_hull <- hull
