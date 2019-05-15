@@ -251,7 +251,7 @@ full_overlaps(filtered_buffer, IUCN_filtered) # sooo funny thing, the percent ov
 NHM <- NHM_AMPH_filtered
 IUCN <- IUCN_filtered
 
-
+#' look at area of overlap for analysis
 
 st_convex_hull(x) # makes a convex hull out of geometry I think
 test <- st_convex_hull(test)
@@ -260,7 +260,8 @@ test <- st_convex_hull(test)
 # So thats some progress 
 # Can probably use this to compute centroid-centroid distance
 # Or centroid-edge distance (Probably harder as thats for two different geometry collections)
-test <- NHM[5,]
+test <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
+# test <- NHM[5,]
 test_cent <- test$geometry
 test <- st_buffer(test, test$Extent_km) 
 test$Centroid <- NA
@@ -270,12 +271,26 @@ print(test$Centroid)
 # I think the below works are expected as well
 # the geometry certainly changes 
 # think I should probably map this to see what happens
-
+plot(test$geometry)
 print(test$geometry)
-test <- st_convex_hull(test)
+test <- st_convex_hull(st_union(test)) # this draws a single straight line between the two centroids
+# so this will possibly be really useful for calculating straight line distance between say centroids
+test <- st_convex_hull(st_combine(test)) # this one doesn't resolve all  boundaries, but makes an actual shape
+plot(test)
 print(test$geometry)
 test
 st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
+
+
+# formailise it a little here in a for loop
+convex_hulls <- function(df) {
+  for (var in unique(df$binomial)) {
+    spp <- df[df$binomial == var,]
+    NAME <- st_convex_hull(st_combine(spp))
+  }
+  return(code)
+}
+
 
 # I think what I need to do with the convex hulls is to take all the points for a spp 
 # and make it into a convex hull (alpha shape) 
