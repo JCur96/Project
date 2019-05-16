@@ -282,13 +282,20 @@ test
 st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
 
 
-NHM <- filtered_buffer 
+NHM <- filtered_buffer
+
 for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
   # as it makes one convex hull per spp entry, not per row
   test <- NHM[NHM$binomial == var,]
-  print(test)
-  NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
-  print(NHM$convex_hull)
+  #print(test)
+  # NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
+  # print(NHM$convex_hull)
+  #hull <- st_convex_hull(st_combine(NHM$geometry[test]))
+  #NHM$convex_hull <- hull[test]
+  test$convex_hull <- st_convex_hull(st_combine(test$geometry))
+  NHM <- rbind(test, NHM) 
+  
+  #NHM$convex_hull <- data.frame(hull)
   # for (row in 1:nrow(test)) {
   #   NHM$convex_hull <- hull[row]
   #   #print(test)
@@ -304,8 +311,17 @@ for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to popu
   # 
 }
 
+makeHulls <- function(df) {
+  for (var in unique(df$binomial)) { 
+    subsetOfDf <- df[df$binomial == var,]
+    subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+    df <- rbind(subsetOfDf, df) 
+    
+  }
+  
+}
 
-
+makeHulls(NHM)
 
 # I think what I need to do with the convex hulls is to take all the points for a spp 
 # and make it into a convex hull (alpha shape) 

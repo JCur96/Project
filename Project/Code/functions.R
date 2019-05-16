@@ -154,3 +154,15 @@ for (var in unique(IUCN_filtered$binomial)) {
   print(p) # printing to png
   dev.off() # not sending to screen
 }
+
+#' makes convex hulls for species present and correctly fills in the same hull for the same spp entry
+#' eg all P. buckleyi have the same hull as they should
+makeHulls <- function(df) {
+  for (var in unique(df$binomial)) { 
+    subsetOfDf <- df[df$binomial == var,]
+    subsetOfDf$convex_hull <- st_convex_hull(st_combine(subusetOfDf$geometry))
+    df <- rbind(subsetOfDf, df) 
+    
+  }
+  
+}
