@@ -328,5 +328,10 @@ makeHulls(NHM)
 # should be able to do this in a for loop a lot like the 
 # graphing I think
 
+#' I think now I need to make a script to compare % overlap of convex hulls
+#' which should be relatively easy I think
+#' just reuse ovelaps functions
+
+
 # Still need to work out something for clipping to landmasses 
 # 
