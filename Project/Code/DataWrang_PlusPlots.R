@@ -283,7 +283,9 @@ st_centroid(x) # finds the centroid of a given polygon(s), probably useful for f
 
 
 NHM <- filtered_buffer
-
+NHM$convex_hull <- NA
+output <- c()
+myvars <- c('binomial', 'convex_hull')
 for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
   # as it makes one convex hull per spp entry, not per row
   test <- NHM[NHM$binomial == var,]
@@ -291,9 +293,16 @@ for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to popu
   # NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
   # print(NHM$convex_hull)
   #hull <- st_convex_hull(st_combine(NHM$geometry[test]))
+  #print(hull)
+  #output <- c(output, hull)
   #NHM$convex_hull <- hull[test]
   test$convex_hull <- st_convex_hull(st_combine(test$geometry))
-  NHM <- rbind(test, NHM) 
+  test <- test[myvars]
+  print(test)
+  test <- st_set_crs(test, 4326)
+  output <- rbind(output, test)
+  
+  # NHM <- rbind(test, NHM) 
   
   #NHM$convex_hull <- data.frame(hull)
   # for (row in 1:nrow(test)) {
@@ -311,27 +320,89 @@ for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to popu
   # 
 }
 
-makeHulls <- function(df) {
+makeHulls <- function(df) { # currently I cant see a solution beyond converting the df into a non-sfc object 
+  # as sf is the thing causing the problems rn
+  # very annoying that somehow it was working just fine yesterday but today it won't behave  
+  df$convex_hull <- NA
   for (var in unique(df$binomial)) { 
     subsetOfDf <- df[df$binomial == var,]
     subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
-    df <- rbind(subsetOfDf, df) 
-    
+    print(subsetOfDf)
+    df <- c(df, subsetOfDf)
+    #hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+    #print(hull)
+    #df <- do.call(rbind, list(subsetOfDf, df))
+    #newDf <<- rbind(subsetOfDf, subsetOfDf)
   }
-  
+  #newDf <<- data.frame(newDf)
 }
 
 makeHulls(NHM)
+head(newDf)
 
 # I think what I need to do with the convex hulls is to take all the points for a spp 
 # and make it into a convex hull (alpha shape) 
 # should be able to do this in a for loop a lot like the 
 # graphing I think
-
+subNHM <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
+subIUCN <- IUCN %>% filter(binomial == 'Batrachyla_leptopus')
+subNHM <- st_transform(subNHM, 4326)
+subIUCN <- st_transform(subIUCN, 4326)
+subNHM <- makeHulls(subNHM)
+hullOver <- st_intersection(subNHM, subIUCN) %>% st_area() * 100 / st_area(subIUCN)
+head(hullOver)
 #' I think now I need to make a script to compare % overlap of convex hulls
 #' which should be relatively easy I think
 #' just reuse ovelaps functions
+#' I think the over_fun needs slight rewriting and then it should work fine
+overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
+  # # get area of each df 
+  # # then get the area of the intersection of both dfs 
+  # # then (intersection / area df2) * 100
+  # # which will give the percentage overlap between new and old areas 
+  overlap <- st_intersection(df1, df2) %>% st_area() * 100 / st_area(df2) # gives percentage overlap between NHM and IUCN 
+  #overlap <- st_intersection(df1, df2) %>% st_area() * 100 /sqrt(st_area(df1) * st_area(df2)) # this gives area overlapping out of total area shaded
+  overlap <- drop_units(overlap) # at this point the output is of class "units" which don't play nice 
+  if (is_empty(overlap) ==T) { # allows for handling of cases of zero overlap 
+    overlap <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
+  }
+  overlap <- as.list(overlap) 
+  return(overlap) # returns the result, so can be passed to another fun 
+}
 
+over_fun <- function(df1, df2) {
+  df1[,"Percent_overlap"] <- NA # adds a column of na's
+  for (row in 1:nrow(df1)) { # for each row in first df's geometry col
+    geom <- df1$convex_hull[row] # extract the geometry
+    x <- overlaps(geom, df2$geometry) # use previous fun to calculate overlaps
+    df1$Percent_overlap[row] <- x # and append to the percent overlap col 
+  }
+  return(df1) # return the modified df for use in another fun 
+}
+
+full_overlaps <- function(NHM_df, IUCN_df) {
+  output <- c() # create an empty list to store results
+  for (var in unique(NHM_df$binomial)) { # find all entries in both dfs which match var
+    IUCN_var <- IUCN_df[IUCN_df$binomial == var,] 
+    NHM_var <- NHM_df[NHM_df$binomial == var,]
+    
+    NHM_var <- st_transform(NHM_var, 2163) # ensure planar crs is in use
+    IUCN_var <- st_transform(IUCN_var, 2163)
+    x <- over_fun(NHM_var, IUCN_var) # then pass to the over_function
+    output <- rbind(x, output) # rebuilding the input df with a new col
+  }
+  output <<- data.frame(output)
+  ## below is for thinking about dynamic naming 
+  # arg_name <- deparse(substitute(df1)) # Get argument name
+  # var_name <- paste("updated", arg_name, sep="_") # Construct the name
+  # assign(var_name, df1, env=.GlobalEnv) # Assign values to variable
+  # # variable will be created in .GlobalEnv
+  return(output)
+}
+
+
+
+full_overlaps(NHM, IUCN)
 
 # Still need to work out something for clipping to landmasses 
 # 
