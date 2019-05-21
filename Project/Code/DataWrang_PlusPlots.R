@@ -297,7 +297,7 @@ for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to popu
   #output <- c(output, hull)
   #NHM$convex_hull <- hull[test]
   test$convex_hull <- st_convex_hull(st_combine(test$geometry))
-  test <- test[myvars]
+  #test <- test[myvars]
   print(test)
   test <- st_set_crs(test, 4326)
   output <- rbind(output, test)
@@ -319,21 +319,28 @@ for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to popu
   # test$convex_hull <- hull
   # 
 }
+NHM <- output
 
+unlockBinding("NHM", environment())
+bindingIsLocked("NHM", environment())
 makeHulls <- function(df) { # currently I cant see a solution beyond converting the df into a non-sfc object 
   # as sf is the thing causing the problems rn
-  # very annoying that somehow it was working just fine yesterday but today it won't behave  
+  # very annoying that somehow it was working just fine yesterday but today it won't behave 
+  output <- c() # empty list to rebuild the df from
   df$convex_hull <- NA
   for (var in unique(df$binomial)) { 
     subsetOfDf <- df[df$binomial == var,]
     subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
-    print(subsetOfDf)
-    df <- c(df, subsetOfDf)
+    subsetOfDf <- st_set_crs(subsetOfDf, 4326)
+    #print(subsetOfDf)
+    #df <<- rbind(df, subsetOfDf)
+    output <- rbind(output, subsetOfDf)
     #hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
     #print(hull)
     #df <- do.call(rbind, list(subsetOfDf, df))
     #newDf <<- rbind(subsetOfDf, subsetOfDf)
   }
+  output <<- output
   #newDf <<- data.frame(newDf)
 }
 
