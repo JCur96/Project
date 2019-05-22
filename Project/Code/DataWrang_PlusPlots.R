@@ -253,76 +253,77 @@ IUCN <- IUCN_filtered
 
 #' look at area of overlap for analysis
 
-st_convex_hull(x) # makes a convex hull out of geometry I think
-test <- st_convex_hull(test)
+# # st_convex_hull(x) # makes a convex hull out of geometry I think
+# test <- st_convex_hull(test)
+# 
+# # The below seems to produce what I expect it to
+# # So thats some progress 
+# # Can probably use this to compute centroid-centroid distance
+# # Or centroid-edge distance (Probably harder as thats for two different geometry collections)
+# test <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
+# # test <- NHM[5,]
+# test_cent <- test$geometry
+# test <- st_buffer(test, test$Extent_km) 
+# test$Centroid <- NA
+# test$Centroid <- st_centroid(test$geometry)
+# print(test_cent)
+# print(test$Centroid)
+# # I think the below works are expected as well
+# # the geometry certainly changes 
+# # think I should probably map this to see what happens
+# plot(test$geometry)
+# print(test$geometry)
+# test <- st_convex_hull(st_union(test)) # this draws a single straight line between the two centroids
+# # so this will possibly be really useful for calculating straight line distance between say centroids
+# test <- st_convex_hull(st_combine(test)) # this one doesn't resolve all  boundaries, but makes an actual shape
+# plot(test)
+# print(test$geometry)
+# test
+# st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
 
-# The below seems to produce what I expect it to
-# So thats some progress 
-# Can probably use this to compute centroid-centroid distance
-# Or centroid-edge distance (Probably harder as thats for two different geometry collections)
-test <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
-# test <- NHM[5,]
-test_cent <- test$geometry
-test <- st_buffer(test, test$Extent_km) 
-test$Centroid <- NA
-test$Centroid <- st_centroid(test$geometry)
-print(test_cent)
-print(test$Centroid)
-# I think the below works are expected as well
-# the geometry certainly changes 
-# think I should probably map this to see what happens
-plot(test$geometry)
-print(test$geometry)
-test <- st_convex_hull(st_union(test)) # this draws a single straight line between the two centroids
-# so this will possibly be really useful for calculating straight line distance between say centroids
-test <- st_convex_hull(st_combine(test)) # this one doesn't resolve all  boundaries, but makes an actual shape
-plot(test)
-print(test$geometry)
-test
-st_centroid(x) # finds the centroid of a given polygon(s), probably useful for finding those distances
 
-
+#NHM <- filtered_buffer
+#NHM$convex_hull <- NA
+# output <- c()
+# myvars <- c('binomial', 'convex_hull')
+# for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
+#   # as it makes one convex hull per spp entry, not per row
+#   test <- NHM[NHM$binomial == var,]
+#   #print(test)
+#   # NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
+#   # print(NHM$convex_hull)
+#   #hull <- st_convex_hull(st_combine(NHM$geometry[test]))
+#   #print(hull)
+#   #output <- c(output, hull)
+#   #NHM$convex_hull <- hull[test]
+#   test$convex_hull <- st_convex_hull(st_combine(test$geometry))
+#   #test <- test[myvars]
+#   print(test)
+#   test <- st_set_crs(test, 4326)
+#   output <- rbind(output, test)
+#   
+#   # NHM <- rbind(test, NHM) 
+#   
+#   #NHM$convex_hull <- data.frame(hull)
+#   # for (row in 1:nrow(test)) {
+#   #   NHM$convex_hull <- hull[row]
+#   #   #print(test)
+#   #   #print(var)
+#   #   #print(NHM$convex_hull) # shows that it cats stuff quite a bit 
+#   #   #i <- test[test$binomial == row,]
+#   #   #NHM$convex_hull <- hull[i]
+#   # }
+#   # NHM$convex_hull <- hull[test]
+#   # test <- NHM[NHM$binomial == var,]
+#   # hull <- st_convex_hull(st_combine(test))
+#   # test$convex_hull <- hull
+#   # 
+# }
+# # NHM <- output
+# 
+# #unlockBinding("NHM", environment())
+# #bindingIsLocked("NHM", environment())
 NHM <- filtered_buffer
-NHM$convex_hull <- NA
-output <- c()
-myvars <- c('binomial', 'convex_hull')
-for (var in unique(NHM$binomial)) { # this isnt working as I'm asking it to populate too many rows 
-  # as it makes one convex hull per spp entry, not per row
-  test <- NHM[NHM$binomial == var,]
-  #print(test)
-  # NHM$convex_hull <- st_convex_hull(st_combine(NHM$geometry[test])) # this isnt subsetting correctly
-  # print(NHM$convex_hull)
-  #hull <- st_convex_hull(st_combine(NHM$geometry[test]))
-  #print(hull)
-  #output <- c(output, hull)
-  #NHM$convex_hull <- hull[test]
-  test$convex_hull <- st_convex_hull(st_combine(test$geometry))
-  #test <- test[myvars]
-  print(test)
-  test <- st_set_crs(test, 4326)
-  output <- rbind(output, test)
-  
-  # NHM <- rbind(test, NHM) 
-  
-  #NHM$convex_hull <- data.frame(hull)
-  # for (row in 1:nrow(test)) {
-  #   NHM$convex_hull <- hull[row]
-  #   #print(test)
-  #   #print(var)
-  #   #print(NHM$convex_hull) # shows that it cats stuff quite a bit 
-  #   #i <- test[test$binomial == row,]
-  #   #NHM$convex_hull <- hull[i]
-  # }
-  # NHM$convex_hull <- hull[test]
-  # test <- NHM[NHM$binomial == var,]
-  # hull <- st_convex_hull(st_combine(test))
-  # test$convex_hull <- hull
-  # 
-}
-NHM <- output
-
-unlockBinding("NHM", environment())
-bindingIsLocked("NHM", environment())
 makeHulls <- function(df) { # currently I cant see a solution beyond converting the df into a non-sfc object 
   # as sf is the thing causing the problems rn
   # very annoying that somehow it was working just fine yesterday but today it won't behave 
@@ -340,17 +341,19 @@ makeHulls <- function(df) { # currently I cant see a solution beyond converting 
     #df <- do.call(rbind, list(subsetOfDf, df))
     #newDf <<- rbind(subsetOfDf, subsetOfDf)
   }
-  output <<- output
+  # output <<- output
+  return(output)
   #newDf <<- data.frame(newDf)
 }
 
-makeHulls(NHM)
-head(newDf)
+NHM <- makeHulls(NHM)
+# head(newDf)
 
 # I think what I need to do with the convex hulls is to take all the points for a spp 
 # and make it into a convex hull (alpha shape) 
 # should be able to do this in a for loop a lot like the 
 # graphing I think
+
 subNHM <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
 subIUCN <- IUCN %>% filter(binomial == 'Batrachyla_leptopus')
 subNHM <- st_transform(subNHM, 4326)
