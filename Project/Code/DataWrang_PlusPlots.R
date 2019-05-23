@@ -365,7 +365,7 @@ head(hullOver)
 #' which should be relatively easy I think
 #' just reuse ovelaps functions
 #' I think the over_fun needs slight rewriting and then it should work fine
-overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
+hullOverlap <- function(df1, df2) { # two input function for calculating the percentage overlap
   # # get area of each df 
   # # then get the area of the intersection of both dfs 
   # # then (intersection / area df2) * 100
@@ -380,17 +380,19 @@ overlaps <- function(df1, df2) { # two input function for calculating the percen
   return(overlap) # returns the result, so can be passed to another fun 
 }
 
-over_fun <- function(df1, df2) {
+hullOverFun <- function(df1, df2) {
   df1[,"Percent_overlap"] <- NA # adds a column of na's
   for (row in 1:nrow(df1)) { # for each row in first df's geometry col
     geom <- df1$convex_hull[row] # extract the geometry
+    #geom <- st_set_crs(geom, 2163)
+    geom <- st_transform(geom, 2163)
     x <- overlaps(geom, df2$geometry) # use previous fun to calculate overlaps
     df1$Percent_overlap[row] <- x # and append to the percent overlap col 
   }
   return(df1) # return the modified df for use in another fun 
 }
 
-full_overlaps <- function(NHM_df, IUCN_df) {
+hullOverlaps <- function(NHM_df, IUCN_df) {
   output <- c() # create an empty list to store results
   for (var in unique(NHM_df$binomial)) { # find all entries in both dfs which match var
     IUCN_var <- IUCN_df[IUCN_df$binomial == var,] 
@@ -398,7 +400,7 @@ full_overlaps <- function(NHM_df, IUCN_df) {
     
     NHM_var <- st_transform(NHM_var, 2163) # ensure planar crs is in use
     IUCN_var <- st_transform(IUCN_var, 2163)
-    x <- over_fun(NHM_var, IUCN_var) # then pass to the over_function
+    x <- hullOverFun(NHM_var, IUCN_var) # then pass to the over_function
     output <- rbind(x, output) # rebuilding the input df with a new col
   }
   output <<- data.frame(output)
