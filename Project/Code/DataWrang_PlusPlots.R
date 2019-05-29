@@ -85,6 +85,7 @@ library(ggforce)
 library(rgeos)
 library(rgdal)
 library(maptools)
+library(rnaturalearth)
 ###################Data_Wrangling################
 ####### NHM collections data #######
 # df <- read.csv('../Data/WorkingSouthAmerica.csv', header=T)
@@ -354,32 +355,17 @@ NHM <- makeHulls(NHM)
 # should be able to do this in a for loop a lot like the 
 # graphing I think
 
-subNHM <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
-subIUCN <- IUCN %>% filter(binomial == 'Batrachyla_leptopus')
-subNHM <- st_transform(subNHM, 4326)
-subIUCN <- st_transform(subIUCN, 4326)
-subNHM <- makeHulls(subNHM)
-hullOver <- st_intersection(subNHM, subIUCN) %>% st_area() * 100 / st_area(subIUCN)
-head(hullOver)
+# subNHM <- NHM %>% filter(binomial == 'Batrachyla_leptopus')
+# subIUCN <- IUCN %>% filter(binomial == 'Batrachyla_leptopus')
+# subNHM <- st_transform(subNHM, 4326)
+# subIUCN <- st_transform(subIUCN, 4326)
+# subNHM <- makeHulls(subNHM)
+# hullOver <- st_intersection(subNHM, subIUCN) %>% st_area() * 100 / st_area(subIUCN)
+# head(hullOver)
 #' I think now I need to make a script to compare % overlap of convex hulls
 #' which should be relatively easy I think
 #' just reuse ovelaps functions
 #' I think the over_fun needs slight rewriting and then it should work fine
-hullOverlap <- function(df1, df2) { # two input function for calculating the percentage overlap
-  # # get area of each df 
-  # # then get the area of the intersection of both dfs 
-  # # then (intersection / area df2) * 100
-  # # which will give the percentage overlap between new and old areas 
-  overlap <- st_intersection(df1, df2) %>% st_area() * 100 / st_area(df2) # gives percentage overlap between NHM and IUCN 
-  #overlap <- st_intersection(df1, df2) %>% st_area() * 100 /sqrt(st_area(df1) * st_area(df2)) # this gives area overlapping out of total area shaded
-  overlap <- drop_units(overlap) # at this point the output is of class "units" which don't play nice 
-  if (is_empty(overlap) ==T) { # allows for handling of cases of zero overlap 
-    overlap <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
-  }
-  overlap <- as.list(overlap) 
-  return(overlap) # returns the result, so can be passed to another fun 
-}
-
 hullOverFun <- function(df1, df2) {
   df1[,"Percent_overlap"] <- NA # adds a column of na's
   for (row in 1:nrow(df1)) { # for each row in first df's geometry col
@@ -403,7 +389,7 @@ hullOverlaps <- function(NHM_df, IUCN_df) {
     x <- hullOverFun(NHM_var, IUCN_var) # then pass to the over_function
     output <- rbind(x, output) # rebuilding the input df with a new col
   }
-  output <<- data.frame(output)
+  # output <<- data.frame(output)
   ## below is for thinking about dynamic naming 
   # arg_name <- deparse(substitute(df1)) # Get argument name
   # var_name <- paste("updated", arg_name, sep="_") # Construct the name
@@ -412,9 +398,40 @@ hullOverlaps <- function(NHM_df, IUCN_df) {
   return(output)
 }
 
+hullOverlaps(NHM, IUCN)
 
-
-full_overlaps(NHM, IUCN)
 
 # Still need to work out something for clipping to landmasses 
-# 
+# I think best suggestion so far is the simplest
+# do an st_difference and create an object from that
+# might want to make one which modifies all rows convex hull 
+# or geometry in for loop so that its just something thats done
+landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
+  st_union()
+plot(landMap)
+plot(st_geometry(NHM$geometry), add = T)
+plot(st_geometry(NHM$convex_hull), add = T)
+
+
+clipHullsToLand <- function(df) {
+  # make a world map here maybe?
+  landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
+    st_union()
+  output <- c()
+  for (var in unique(df$binomial)) {
+    subsetOfDf <- df[df$binomial == var,]
+    ocean <- st_difference(subsetOfDf$convex_hull, landMap)
+    clippedHull <- st_difference(ocean, subsetOfDf$convex_hull)
+    print(clippedHull)
+    if (is_empty(clippedHull)) {
+       # do not replace just leave
+      print('No difference')
+    } else {
+      subsetOfDf$convex_hull <- clippedHull
+    }
+    output <- rbind(output, subsetOfDf)
+  }
+  return(output)
+}
+
+NHM <- clipHullsToLand(NHM)
