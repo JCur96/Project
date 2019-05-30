@@ -406,15 +406,10 @@ hullOverlaps(NHM, IUCN)
 # do an st_difference and create an object from that
 # might want to make one which modifies all rows convex hull 
 # or geometry in for loop so that its just something thats done
-landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
-  st_union()
-plot(landMap)
-plot(st_geometry(NHM$geometry), add = T)
-plot(st_geometry(NHM$convex_hull), add = T)
 
 
 clipHullsToLand <- function(df) {
-  # make a world map here maybe?
+  # making a world map of the land
   landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
     st_union()
   output <- c()
@@ -422,26 +417,16 @@ clipHullsToLand <- function(df) {
     subsetOfDf <- df[df$binomial == var,]
     clippedHull <- st_intersection(subsetOfDf$convex_hull, landMap)
     # ocean <- st_difference(subsetOfDf$convex_hull, landMap)
-    # clippedHull <- st_difference(ocean, subsetOfDf$convex_hull)
-    # subsetOfDf$convex_hull <- st_difference(ocean, subsetOfDf$convex_hull)
-    # print(clippedHull)
-    # print(subsetOfDf$convex_hull)
     if (is_empty(clippedHull)) {
-       # do not replace just leave
-      # remake the hulls
-      #subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+      # error handling here
+      # can make this more complex but currently 
+      # this is just for working terrestrially
       print('Hull is entirely in the ocean')
     } else {
-      #subsetOfDf$convex_hull <- st_difference(ocean, subsetOfDf$convex_hull)
-      #subsetOfDf$convex_hull <- clippedHull
-      #print(subsetOfDf)
-      #print(clippedHull)
-      #print('theres a difference')
       # print(clippedHull)
       subsetOfDf$convex_hull <- clippedHull
       
     }
-    #print(subsetOfDf)
     output <- rbind(output, subsetOfDf)
   }
   return(output)
@@ -449,3 +434,40 @@ clipHullsToLand <- function(df) {
 
 NHM <- clipHullsToLand(NHM)
 
+
+makeClippedHulls <- function(df) { # currently I cant see a solution beyond converting the df into a non-sfc object 
+  # as sf is the thing causing the problems rn
+  # very annoying that somehow it was working just fine yesterday but today it won't behave
+  landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
+    st_union()
+  output <- c() # empty list to rebuild the df from
+  df$convex_hull <- NA
+  for (var in unique(df$binomial)) { 
+    subsetOfDf <- df[df$binomial == var,]
+    subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+    subsetOfDf <- st_set_crs(subsetOfDf, 4326)
+    clippedHull <- st_intersection(subsetOfDf$convex_hull, landMap)
+    if (is_empty(clippedHull)) {
+      # error handling here
+      # can make this more complex but currently 
+      # this is just for working terrestrially
+      print('Hull is entirely in the ocean')
+    } else {
+      # print(clippedHull)
+      subsetOfDf$convex_hull <- clippedHull
+    }
+    output <- rbind(output, subsetOfDf)
+    #hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+    #print(hull)
+    #df <- do.call(rbind, list(subsetOfDf, df))
+    #newDf <<- rbind(subsetOfDf, subsetOfDf)
+  }
+  return(output)
+}
+NHM <- filtered_buffer
+NHM <- makeClippedHulls(NHM)
+
+landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
+  st_union()
+plot(landMap)
+plot(st_geometry(NHM$convex_hull), add = T)
