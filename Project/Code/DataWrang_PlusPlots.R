@@ -420,19 +420,21 @@ clipHullsToLand <- function(df) {
   output <- c()
   for (var in unique(df$binomial)) {
     subsetOfDf <- df[df$binomial == var,]
-    subsetOfDf1 <- df[df$binomial == var,]
     ocean <- st_difference(subsetOfDf$convex_hull, landMap)
-    # clippedHull <- st_difference(ocean, subsetOfDf$convex_hull)
-    subsetOfDf$convex_hull <- st_difference(ocean, subsetOfDf$convex_hull)
+    clippedHull <- st_difference(ocean, subsetOfDf$convex_hull)
+    # subsetOfDf$convex_hull <- st_difference(ocean, subsetOfDf$convex_hull)
     # print(clippedHull)
     # print(subsetOfDf$convex_hull)
     if (is_empty(clippedHull)) {
        # do not replace just leave
-      subsetOfDf$convex_hull <- subsetOfDf1$convex_hull
+      # remake the hulls
+      subsetOfDf$convex_hull <- st_convex_hull(st_combine(subsetOfDf$geometry))
+      print('theres no difference')
+    } else {
+      subsetOfDf$convex_hull <- st_difference(ocean, subsetOfDf$convex_hull)
+      print('theres a difference')
     }
-    # } else {
-    #   subsetOfDf$convex_hull <- clippedHull
-    # }
+    #print(subsetOfDf)
     output <- rbind(output, subsetOfDf)
   }
   return(output)
