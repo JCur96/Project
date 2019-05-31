@@ -499,4 +499,4 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   return(output)
 }
 
-NHM <- centroidEdgeDistance()
+NHM <- centroidEdgeDistance(NHM, IUCN)
