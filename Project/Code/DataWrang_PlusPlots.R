@@ -471,3 +471,24 @@ landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>%
   st_union()
 plot(landMap)
 plot(st_geometry(NHM$convex_hull), add = T)
+
+
+# take a measure of centroid/edge distance as another measure of overlap
+distances <- pol %>% 
+  st_cast("POINT") %>% 
+  st_distance(st_centroid(pol))
+
+centroidEdgeDistance <- function(NHM_df, IUCN_df) {
+  output <- c()
+  for (var in unique(NHM_df$binomial)) {
+    subsetOfDf <- NHM_df[NHM_df$binomial == var,]
+    subsetOfIUCN <- IUCN_df[IUCN_df$binomial == var,] 
+    # currently finding the distance from the centre to the edge of the same hull
+    # could do something to find distance between centroids which might 
+    # be more interesting
+    subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
+      st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
+    output <- rbind(subsetOfDf, outputs)
+  }
+  return(output)
+}
