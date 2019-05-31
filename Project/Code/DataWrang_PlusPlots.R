@@ -471,9 +471,15 @@ landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>%
   st_union()
 plot(landMap)
 plot(st_geometry(NHM$convex_hull), add = T)
+plot(st_geometry(IUCN$geometry), add = T)
 
 
 # take a measure of centroid/edge distance as another measure of overlap
+# something interesting to be found in the absolute displacement of range centroid maybe?
+# will have to look into this
+# question: is there a significant absolute shift in range centroid? 
+# hypothesis: there is a significant shift in absolute distance of centroid, 
+# (?) which can be correlated with climate change
 distances <- pol %>% 
   st_cast("POINT") %>% 
   st_distance(st_centroid(pol))
@@ -492,3 +498,5 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   }
   return(output)
 }
+
+NHM <- centroidEdgeDistance()
