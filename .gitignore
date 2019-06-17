@@ -3,3 +3,15 @@
 .RData
 .Ruserdata
 Readings
+
+*.CPG
+*.dbf 
+*.prj 
+*.sbn 
+*.sbx 
+*.shp 
+*.shx
+
+Project/Output/IUCN_Range_Graphs/
+
+Project/Data/AMPHIBIANS\.shp\.xml

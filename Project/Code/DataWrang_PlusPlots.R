@@ -480,21 +480,26 @@ plot(st_geometry(IUCN$geometry), add = T)
 # question: is there a significant absolute shift in range centroid? 
 # hypothesis: there is a significant shift in absolute distance of centroid, 
 # (?) which can be correlated with climate change
-distances <- pol %>% 
-  st_cast("POINT") %>% 
-  st_distance(st_centroid(pol))
+# distances <- pol %>% 
+#   st_cast("POINT") %>% 
+#   st_distance(st_centroid(pol))
 
 centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   output <- c()
   for (var in unique(NHM_df$binomial)) {
     subsetOfDf <- NHM_df[NHM_df$binomial == var,]
     subsetOfIUCN <- IUCN_df[IUCN_df$binomial == var,] 
+    subsetOfDf$convex_hull <- st_transform(subsetOfDf$convex_hull, 2163)
+    subsetOfIUCN <- st_transform(subsetOfIUCN, 2163)
     # currently finding the distance from the centre to the edge of the same hull
     # could do something to find distance between centroids which might 
     # be more interesting
-    subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
-      st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
-    output <- rbind(subsetOfDf, outputs)
+    centroid <- st_centroid(subsetOfDf$convex_hull) # finds the centroid (point geom of convex hull)
+    edgeDist <- st_distance(centroid, subsetOfIUCN$geometry)
+    subsetOfDf$distance <- edgeDist
+    # subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
+    #   st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
+    output <- rbind(subsetOfDf, output)
   }
   return(output)
 }
