@@ -440,6 +440,7 @@ makeClippedHulls <- function(df) { # currently I cant see a solution beyond conv
   # very annoying that somehow it was working just fine yesterday but today it won't behave
   landMap <- rnaturalearth::ne_countries(returnclass = 'sf') %>% 
     st_union()
+  # landMap <- st_transform(landMap, 2163)
   output <- c() # empty list to rebuild the df from
   df$convex_hull <- NA
   for (var in unique(df$binomial)) { 
@@ -496,12 +497,23 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
     # be more interesting
     centroid <- st_centroid(subsetOfDf$convex_hull) # finds the centroid (point geom of convex hull)
     edgeDist <- st_distance(centroid, subsetOfIUCN$geometry)
-    subsetOfDf$distance <- edgeDist
+    edgeDist <- drop_units(edgeDist)
+    if (is_empty(edgeDist) == T) { # allows for handling of cases of zero overlap 
+      edgeDist <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
+    }
+    print(edgeDist) # gives matrix of distances, which is not super what I want 
+    print(var)
+    subsetOfDf$distance <- edgeDist 
+    #print(subsetOfDf)
     # subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
     #   st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
-    output <- rbind(subsetOfDf, output)
+    #output <- rbind(output, subsetOfDf)
   }
   return(output)
 }
 
 NHM <- centroidEdgeDistance(NHM, IUCN)
+
+
+IUCNDeBug <- IUCN[IUCN$binomial == 'Strabomantis_bufoniformis',] # ok so 
+# need to add exception handling for spp with multiple IUCN entries/ convex hulls
