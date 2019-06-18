@@ -484,6 +484,8 @@ plot(st_geometry(IUCN$geometry), add = T)
 # distances <- pol %>% 
 #   st_cast("POINT") %>% 
 #   st_distance(st_centroid(pol))
+NHM <- filtered_buffer
+NHM <- makeClippedHulls(NHM)
 
 centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   output <- c()
@@ -501,8 +503,15 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
     if (is_empty(edgeDist) == T) { # allows for handling of cases of zero overlap 
       edgeDist <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
     }
+    if (edgeDist[, 2] == T) { # multiple iucn
+      # do something
+      print(edgeDist[, 2])
+      #distance_2 <- edgeDist[, 2]
+    } #else {
+    #   distance_2 <- c(NA)
+    # }
     print(edgeDist) # gives matrix of distances, which is not super what I want 
-    print(var)
+    #print(var)
     subsetOfDf$distance <- edgeDist 
     #print(subsetOfDf)
     # subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
