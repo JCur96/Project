@@ -489,6 +489,8 @@ NHM <- makeClippedHulls(NHM)
 
 centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   output <- c()
+  NHM_df$distance <- NA
+  NHM_df$distance2 <- NA
   for (var in unique(NHM_df$binomial)) {
     subsetOfDf <- NHM_df[NHM_df$binomial == var,]
     subsetOfIUCN <- IUCN_df[IUCN_df$binomial == var,] 
@@ -503,20 +505,39 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
     if (is_empty(edgeDist) == T) { # allows for handling of cases of zero overlap 
       edgeDist <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
     }
-    if (edgeDist[, 2] == T) { # multiple iucn
-      # do something
-      print(edgeDist[, 2])
-      #distance_2 <- edgeDist[, 2]
-    } #else {
+    # print(ncol(edgeDist))
+    matrixSize <- ncol(edgeDist)
+    if (ncol(edgeDist) == 1) {
+      subsetOfDf$distance <- edgeDist
+    } else if (ncol(edgeDist) == 2) {
+      subsetOfDf$distance <- edgeDist[, 1]
+      subsetOfDf$distance2 <- edgeDist[, 2]
+    } else {
+      print('IUCN data contains more than two polygons, please reduce to areas 
+            of interest and try again')
+    }
+    
+    # if (ncol(edgeDist) > 1) {
+    #   subsetOfDf$distance <- edgeDist[, 1]
+    #   subsetOfDf$distance2 <- edgeDist[, 2]
+    # } else {
+    #   subsetOfDf$distance <- edgeDist
+    #   subsetOfDf$distance2 <- NA
+    # }
+    # if (edgeDist[, 2] == T) { # multiple iucn
+    #   # do something
+    #   print(edgeDist[, 2])
+    #   #distance_2 <- edgeDist[, 2]
+    # } #else {
     #   distance_2 <- c(NA)
     # }
-    print(edgeDist) # gives matrix of distances, which is not super what I want 
-    #print(var)
-    subsetOfDf$distance <- edgeDist 
+    #print(edgeDist) # gives matrix of distances, which is not super what I want 
+    # print(var)
+    #subsetOfDf$distance <- edgeDist 
     #print(subsetOfDf)
     # subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
     #   st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
-    #output <- rbind(output, subsetOfDf)
+    output <- rbind(output, subsetOfDf)
   }
   return(output)
 }
