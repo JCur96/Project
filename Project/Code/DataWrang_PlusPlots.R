@@ -543,7 +543,53 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
 }
 
 NHM <- centroidEdgeDistance(NHM, IUCN)
+# 
+# 
+# IUCNDeBug <- IUCN[IUCN$binomial == 'Strabomantis_bufoniformis',] # ok so 
+# # need to add exception handling for spp with multiple IUCN entries/ convex hulls
+# 
+# IUCN <- IUCN[,2:3]
+# head(IUCN)
+# write.csv(IUCN, file = 'dummyIUCN.csv')
+view(NHM)
+NHM <- hullOverlaps(NHM, IUCN)
 
+binomialOverlap <- function(x) {
+  #x <- st_set_crs(x, 2163)
+  output <- c()
+ #str(x$Percent_overlap)
+ print(class(x$Percent_overlap))
+  for (var in unique(x$binomial)) {
+    subsetOfDf <- x[x$binomial == var,]
+    if (subsetOfDf$Percent_overlap > 0) {
+      subsetOfDf$Percent_overlap <- 1
+    } # else {
+    #   subsetOfDf$PercentOverlap <- 0
+    # }
+    # print(subsetOfDf$Percent_overlap)
+    output <- rbind(output, subsetOfDf)
+  }
+  return(output)
+}
 
-IUCNDeBug <- IUCN[IUCN$binomial == 'Strabomantis_bufoniformis',] # ok so 
-# need to add exception handling for spp with multiple IUCN entries/ convex hulls
+NHM <- binomialOverlap(NHM)
+
+#### analysis stuff, shouldnt need to make bespoke funcitions for this ######
+# look at glm
+# glmm
+# and mcmcglmm
+# install.packages('MCMCglmm')
+# install.packages('lme4')
+# install.packages('lmerTest')
+# library(lme4)
+# library(lmerTest)
+
+# turn it into an integer column before passing it to the replacement fun to 
+# remove errors probably
+NHM$Percent_overlap <- as.integer(NHM$Percent_overlap)
+# before passing to model, will have to clean up the TypeStatus col using regex
+# ie have just 'Type' instead of 'Type, Types, type' etc.
+# also, change that damn Percent_overlap bullshit into a nice camelCase
+
+model <- glmer(NHM$Percent_overlap ~ NHM$binomial | NHM$TypeStatus, data = NHM, 
+               family = 'binomial')
