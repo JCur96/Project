@@ -551,14 +551,14 @@ NHM <- centroidEdgeDistance(NHM, IUCN)
 # IUCN <- IUCN[,2:3]
 # head(IUCN)
 # write.csv(IUCN, file = 'dummyIUCN.csv')
-view(NHM)
+
 NHM <- hullOverlaps(NHM, IUCN)
 
 binomialOverlap <- function(x) {
   #x <- st_set_crs(x, 2163)
   output <- c()
  #str(x$Percent_overlap)
- print(class(x$Percent_overlap))
+ #print(class(x$Percent_overlap))
   for (var in unique(x$binomial)) {
     subsetOfDf <- x[x$binomial == var,]
     if (subsetOfDf$Percent_overlap > 0) {
@@ -571,7 +571,7 @@ binomialOverlap <- function(x) {
   }
   return(output)
 }
-
+      
 NHM <- binomialOverlap(NHM)
 
 #### analysis stuff, shouldnt need to make bespoke funcitions for this ######
@@ -581,8 +581,8 @@ NHM <- binomialOverlap(NHM)
 # install.packages('MCMCglmm')
 # install.packages('lme4')
 # install.packages('lmerTest')
-# library(lme4)
-# library(lmerTest)
+library(lme4)
+library(lmerTest)
 
 # turn it into an integer column before passing it to the replacement fun to 
 # remove errors probably
@@ -591,5 +591,50 @@ NHM$Percent_overlap <- as.integer(NHM$Percent_overlap)
 # ie have just 'Type' instead of 'Type, Types, type' etc.
 # also, change that damn Percent_overlap bullshit into a nice camelCase
 
-model <- glmer(NHM$Percent_overlap ~ NHM$binomial | NHM$TypeStatus, data = NHM, 
+#' regex bullshit for sorting out the pile of shit which is the typeStatus 
+#' entries. 
+#' 
+#' \code{fixTypeNames} corrects variants of type description (e.g. Type, Types,
+#' type, etc.) and turns them into a single description. 
+#' 
+#' This is going to be both annoying and time consuming, and I basically have to
+#' do it before I can really do any analysis
+#' @param x an object of class sf, sfc or sfg containing a \code{TypeStatus} 
+#' column. 
+#' @examples
+#' data.frame <- fixTypeNames(data.frame)
+fixTypeNames <- function(x) {
+  x$TypeStatus <- gsub('syn(.*)', 'syn-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('co(.*)', 'co-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('para(.*)', 'para-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('holo(.*)', 'holo-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('type(.*)', 'type', ignore.case = T, x$TypeStatus)
+  return(x)
+}
+NHM2 <- NHM
+NHM <- NHM2
+NHM <- fixTypeNames(NHM)
+
+# NHM$TypeStatus <- gsub('syn(.*)', 'test', ignore.case = T, NHM$TypeStatus) 
+# NHM$TypeStatus <- gsub('test', 'syn-', ignore.case = T, NHM$TypeStatus) 
+
+model <- glmer(NHM$Percent_overlap ~ NHM$TypeStatus + (1| NHM$binomial), data = NHM, 
                family = 'binomial')
+plot(model)
+
+
+#' for pangolins, might be a good idea to use decade as the random effect 
+#' as there are some after anthropocene, and many before! 
+#' so a model for this would look like this
+#' model <- glmer(x$percent_overlap ~ x$Binomial +(1|x$Decade), data = x, 
+#' family = 'binomial')
+#' 
+#' and 
+#' model <- glmer(x$distance ~ x$Binomial +(1|x$Decade), data = x, 
+#' family = 'guassian')
+#' 
+#' or it could be something more like
+#' model <- glmer(x$percent_overlap ~ x$Decade +(1|x$Binomial), data = x, 
+#' family = 'binomial') 
+#' model <- mcmcglmm(percent_overlap ~ decade, random = Binomial, 
+#' family='binomial', )
