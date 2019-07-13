@@ -172,6 +172,25 @@ for (var in unique(IUCN_filtered$binomial)) {
     dev.off() # not sending to screen
 }
 
+
+resolveIUCNGeom <- function(x) {
+  output <- c()
+  stepOut <- data.frame(ncol = 2, nrow = 0)
+  colNames <- c('binomial', 'geometry')
+  colnames(stepOut) <- colNames
+  for (var in unique(x$binomial)) {
+    IUCN_var <- x[x$binomial == var,]
+    y <- st_combine(IUCN_var$geometry)
+    #print(y)
+    stepOut$binomial <- var
+    stepOut$geometry <- y
+    output <- rbind(stepOut, output)
+  }
+  #output <- rbind(stepOut, output)
+  # output <- as.data.frame(output)
+  return(output)
+}
+
 ######working percent overlap functions ######
 
 overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
@@ -228,8 +247,14 @@ full_overlaps(filtered_buffer, IUCN_filtered) # sooo funny thing, the percent ov
 # overlaps returns % of total shaded that is both IUCN and NHM
 # fixed that! 
 
-
-
+# The below has helped show me that it is likely that there were no IUCN records
+# with more than one entry, which is why that function now shits the bed with the
+# pangolin data
+# NHMTest <- NHM %>% filter(binomial == 'Hyloscirtus_albopunctulatus ')
+# IUCNTest <- IUCN %>% filter(binomial == 'Hyloscirtus_albopunctulatus')
+# View(NHMTest)
+# View(IUCNTest)
+# full_overlaps(NHMTest, IUCNTest)
 ##### analysis stuff 
 #' Probably want to see about calculating both the 
 #' Area of Occupancy AOO
