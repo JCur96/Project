@@ -92,6 +92,8 @@ library(rnaturalearth)
 # prepNHMData(df) # it works!
 NHM_AMPH <- read.csv("../Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
+# NHM_AMPH$Extent..m. <- (NHM_AMPH$Extent..m. /1000)
+# NHM_AMPH <- NHM_AMPH %>% rename(Extent_km = Extent..m.)
 NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) 
                                 & Locality != '' & Extent_km < 800 & binomial != '') 
 # filtering the data (removing NA's as sf cannot parse data
@@ -184,6 +186,7 @@ overlaps <- function(df1, df2) { # two input function for calculating the percen
     overlap <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
   }
   overlap <- as.list(overlap) 
+  print(overlap)
   return(overlap) # returns the result, so can be passed to another fun 
 }
 
@@ -638,3 +641,4 @@ plot(model)
 #' family = 'binomial') 
 #' model <- mcmcglmm(percent_overlap ~ decade, random = Binomial, 
 #' family='binomial', )
+
