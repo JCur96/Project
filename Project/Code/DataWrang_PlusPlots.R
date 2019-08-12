@@ -92,6 +92,8 @@ library(rnaturalearth)
 # prepNHMData(df) # it works!
 NHM_AMPH <- read.csv("../Data/WorkingSouthAmerica.csv", header=T) #reading in the data from csv (have to set your own path)
 colnames(NHM_AMPH)[7] <- "binomial" # sets the ColName from UpdatedScientificName to binomial for easier times later on
+# NHM_AMPH$Extent..m. <- (NHM_AMPH$Extent..m. /1000)
+# NHM_AMPH <- NHM_AMPH %>% rename(Extent_km = Extent..m.)
 NHM_AMPH <- NHM_AMPH %>% filter(Longitude != is.na(Longitude) 
                                 & Locality != '' & Extent_km < 800 & binomial != '') 
 # filtering the data (removing NA's as sf cannot parse data
@@ -170,6 +172,25 @@ for (var in unique(IUCN_filtered$binomial)) {
     dev.off() # not sending to screen
 }
 
+
+resolveIUCNGeom <- function(x) {
+  output <- c()
+  stepOut <- data.frame(ncol = 2, nrow = 0)
+  colNames <- c('binomial', 'geometry')
+  colnames(stepOut) <- colNames
+  for (var in unique(x$binomial)) {
+    IUCN_var <- x[x$binomial == var,]
+    y <- st_combine(IUCN_var$geometry)
+    #print(y)
+    stepOut$binomial <- var
+    stepOut$geometry <- y
+    output <- rbind(stepOut, output)
+  }
+  #output <- rbind(stepOut, output)
+  # output <- as.data.frame(output)
+  return(output)
+}
+
 ######working percent overlap functions ######
 
 overlaps <- function(df1, df2) { # two input function for calculating the percentage overlap
@@ -184,6 +205,7 @@ overlaps <- function(df1, df2) { # two input function for calculating the percen
     overlap <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
   }
   overlap <- as.list(overlap) 
+  print(overlap)
   return(overlap) # returns the result, so can be passed to another fun 
 }
 
@@ -225,8 +247,14 @@ full_overlaps(filtered_buffer, IUCN_filtered) # sooo funny thing, the percent ov
 # overlaps returns % of total shaded that is both IUCN and NHM
 # fixed that! 
 
-
-
+# The below has helped show me that it is likely that there were no IUCN records
+# with more than one entry, which is why that function now shits the bed with the
+# pangolin data
+# NHMTest <- NHM %>% filter(binomial == 'Hyloscirtus_albopunctulatus ')
+# IUCNTest <- IUCN %>% filter(binomial == 'Hyloscirtus_albopunctulatus')
+# View(NHMTest)
+# View(IUCNTest)
+# full_overlaps(NHMTest, IUCNTest)
 ##### analysis stuff 
 #' Probably want to see about calculating both the 
 #' Area of Occupancy AOO
@@ -489,6 +517,8 @@ NHM <- makeClippedHulls(NHM)
 
 centroidEdgeDistance <- function(NHM_df, IUCN_df) {
   output <- c()
+  NHM_df$distance <- NA
+  NHM_df$distance2 <- NA
   for (var in unique(NHM_df$binomial)) {
     subsetOfDf <- NHM_df[NHM_df$binomial == var,]
     subsetOfIUCN <- IUCN_df[IUCN_df$binomial == var,] 
@@ -503,26 +533,137 @@ centroidEdgeDistance <- function(NHM_df, IUCN_df) {
     if (is_empty(edgeDist) == T) { # allows for handling of cases of zero overlap 
       edgeDist <- c(0) # as it otherwise returns a list of length zero, which cannot be appended to a df
     }
-    if (edgeDist[, 2] == T) { # multiple iucn
-      # do something
-      print(edgeDist[, 2])
-      #distance_2 <- edgeDist[, 2]
-    } #else {
+    # print(ncol(edgeDist))
+    matrixSize <- ncol(edgeDist)
+    if (ncol(edgeDist) == 1) {
+      subsetOfDf$distance <- edgeDist
+    } else if (ncol(edgeDist) == 2) {
+      subsetOfDf$distance <- edgeDist[, 1]
+      subsetOfDf$distance2 <- edgeDist[, 2]
+    } else {
+      print('IUCN data contains more than two polygons, please reduce to areas 
+            of interest and try again')
+    }
+    
+    # if (ncol(edgeDist) > 1) {
+    #   subsetOfDf$distance <- edgeDist[, 1]
+    #   subsetOfDf$distance2 <- edgeDist[, 2]
+    # } else {
+    #   subsetOfDf$distance <- edgeDist
+    #   subsetOfDf$distance2 <- NA
+    # }
+    # if (edgeDist[, 2] == T) { # multiple iucn
+    #   # do something
+    #   print(edgeDist[, 2])
+    #   #distance_2 <- edgeDist[, 2]
+    # } #else {
     #   distance_2 <- c(NA)
     # }
-    print(edgeDist) # gives matrix of distances, which is not super what I want 
-    #print(var)
-    subsetOfDf$distance <- edgeDist 
+    #print(edgeDist) # gives matrix of distances, which is not super what I want 
+    # print(var)
+    #subsetOfDf$distance <- edgeDist 
     #print(subsetOfDf)
     # subsetOfDf$centroidDistance <- subsetOfDf$convex_hull %>%
     #   st_cast("POINT") %>% st_distance(st_centroid(subsetOfDf$convex_hull))
-    #output <- rbind(output, subsetOfDf)
+    output <- rbind(output, subsetOfDf)
   }
   return(output)
 }
 
 NHM <- centroidEdgeDistance(NHM, IUCN)
+# 
+# 
+# IUCNDeBug <- IUCN[IUCN$binomial == 'Strabomantis_bufoniformis',] # ok so 
+# # need to add exception handling for spp with multiple IUCN entries/ convex hulls
+# 
+# IUCN <- IUCN[,2:3]
+# head(IUCN)
+# write.csv(IUCN, file = 'dummyIUCN.csv')
+
+NHM <- hullOverlaps(NHM, IUCN)
+
+binomialOverlap <- function(x) {
+  #x <- st_set_crs(x, 2163)
+  output <- c()
+ #str(x$Percent_overlap)
+ #print(class(x$Percent_overlap))
+  for (var in unique(x$binomial)) {
+    subsetOfDf <- x[x$binomial == var,]
+    if (subsetOfDf$Percent_overlap > 0) {
+      subsetOfDf$Percent_overlap <- 1
+    } # else {
+    #   subsetOfDf$PercentOverlap <- 0
+    # }
+    # print(subsetOfDf$Percent_overlap)
+    output <- rbind(output, subsetOfDf)
+  }
+  return(output)
+}
+      
+NHM <- binomialOverlap(NHM)
+
+#### analysis stuff, shouldnt need to make bespoke funcitions for this ######
+# look at glm
+# glmm
+# and mcmcglmm
+# install.packages('MCMCglmm')
+# install.packages('lme4')
+# install.packages('lmerTest')
+library(lme4)
+library(lmerTest)
+
+# turn it into an integer column before passing it to the replacement fun to 
+# remove errors probably
+NHM$Percent_overlap <- as.integer(NHM$Percent_overlap)
+# before passing to model, will have to clean up the TypeStatus col using regex
+# ie have just 'Type' instead of 'Type, Types, type' etc.
+# also, change that damn Percent_overlap bullshit into a nice camelCase
+
+#' regex bullshit for sorting out the pile of shit which is the typeStatus 
+#' entries. 
+#' 
+#' \code{fixTypeNames} corrects variants of type description (e.g. Type, Types,
+#' type, etc.) and turns them into a single description. 
+#' 
+#' This is going to be both annoying and time consuming, and I basically have to
+#' do it before I can really do any analysis
+#' @param x an object of class sf, sfc or sfg containing a \code{TypeStatus} 
+#' column. 
+#' @examples
+#' data.frame <- fixTypeNames(data.frame)
+fixTypeNames <- function(x) {
+  x$TypeStatus <- gsub('syn(.*)', 'syn-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('co(.*)', 'co-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('para(.*)', 'para-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('holo(.*)', 'holo-', ignore.case = T, x$TypeStatus)
+  x$TypeStatus <- gsub('type(.*)', 'type', ignore.case = T, x$TypeStatus)
+  return(x)
+}
+NHM2 <- NHM
+NHM <- NHM2
+NHM <- fixTypeNames(NHM)
+
+# NHM$TypeStatus <- gsub('syn(.*)', 'test', ignore.case = T, NHM$TypeStatus) 
+# NHM$TypeStatus <- gsub('test', 'syn-', ignore.case = T, NHM$TypeStatus) 
+
+model <- glmer(NHM$Percent_overlap ~ NHM$TypeStatus + (1| NHM$binomial), data = NHM, 
+               family = 'binomial')
+plot(model)
 
 
-IUCNDeBug <- IUCN[IUCN$binomial == 'Strabomantis_bufoniformis',] # ok so 
-# need to add exception handling for spp with multiple IUCN entries/ convex hulls
+#' for pangolins, might be a good idea to use decade as the random effect 
+#' as there are some after anthropocene, and many before! 
+#' so a model for this would look like this
+#' model <- glmer(x$percent_overlap ~ x$Binomial +(1|x$Decade), data = x, 
+#' family = 'binomial')
+#' 
+#' and 
+#' model <- glmer(x$distance ~ x$Binomial +(1|x$Decade), data = x, 
+#' family = 'guassian')
+#' 
+#' or it could be something more like
+#' model <- glmer(x$percent_overlap ~ x$Decade +(1|x$Binomial), data = x, 
+#' family = 'binomial') 
+#' model <- mcmcglmm(percent_overlap ~ decade, random = Binomial, 
+#' family='binomial', )
+
