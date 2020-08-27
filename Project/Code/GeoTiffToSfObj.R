@@ -32,6 +32,7 @@ library(sf)
 library(ggplot2)
 library(stars)
 library(stringr)
+library(here)
 ###### Sandbox #######
 #GDALinfo("../Data/gigantea_aoh.tif") ## Check that the file exists and is a GeoTif
 
@@ -106,28 +107,32 @@ crassi <-
 ##### save that data then start on the next file (because memory footprint)
 RunAOHAnalysis <- function(NHMDataDir, AOHDataDir) 
   {
-  # messy but quick process for testing, run process NHM data from MRes Proj
-  NHM_Pangolins <- read.csv(NHMDataDir, header=T)
-  NHM_Pangolins <- prepNHMData(NHM_Pangolins, 6)
-  NHM_Pangolins <- NHM_Pangolins %>% filter(Decade != is.na(Decade))
-  NHM_Pangolins <- NHM_Pangolins %>% select(-c(NOTES))
-  NHM_Pangolins <- fixTypeNames(NHM_Pangolins)
-  NHM_Pangolins$Extent..m. <- (NHM_Pangolins$Extent..m. /1000)
-  NHM_Pangolins <- NHM_Pangolins %>% rename(Extent_km = Extent..m.)
-  NHM_Pangolins <- addError(NHM_Pangolins)
-  myvars <- c('binomial', 'geometry')
-  NHM_Pangolins <- NHM_Pangolins[myvars]
+  NHMPangolinList <- ReadInAndProcessNHM(NHMDataDir)
   # create a df for overlap data to go to 
   # as we will discard the loaded geometry after each species otherwise memory
   # will run out
-  overlapDf = data.frame(binomial=as.character(), Percent_overlap=double(), binomial_overlap=as.integer()) # or something like that
+  # overlapDf = data.frame(binomial=as.character(), Percent_overlap=double(), binomial_overlap=as.integer()) # or something like that
   AOHFileList = list.files(path = AOHDataDir, pattern = "*.shp", full.names = TRUE)
   for (file in AOHFileList) 
     {
     #get the file name ie the species name
-    sppName = str_extract(file, regex("\\\\w+\\_"))
+    print(file)
+    # sppName = str_extract(file, regex("\/\\w+\\_"))
+    # print(sppName)
+    sppName = str_extract(file, regex("\\/\\w+\\_"))
+    #print(sppName)
     sppName = gsub("/", "", sppName)
     sppName = gsub("_", "", sppName)
+    print(sppName)
+    for (item in NHMPangolinList) {
+      #print(unique(item$binomial))
+      Spp <- unique(item$binomial)
+      #print(Spp)
+      if (unique(item$binomial) == sppName) {
+        print('match')
+      }
+    }
+    #sapply(NHMPangolinList, function(x) unique(x$binomial))
     # read the file in!
     sppFile = st_read(dsn = file)
     # pass it to this little pipline
@@ -138,18 +143,55 @@ RunAOHAnalysis <- function(NHMDataDir, AOHDataDir)
       st_as_sf() %>%
       st_transform(4326)
     # calculate the overlaps and append to a df
-    overlaps <- calculateOverlaps(NHM_Pangolins, sppFile)
+    # for (item in NHMPangolinList) {
+    #   #compare sppName and the current list item $Name
+    #   if (sppName == NHMPangolinList$item) {
+    #     print('found a match')
+    #   }
+      #if sppNme and item match, then calulate overlaps
+    ##}
+    #overlaps <- calculateOverlaps(NHM_Pangolins, sppFile)
     # calculate binomal overlaps and apppend to df
-    overlaps <- binomialOverlap(overlaps)
-    st_write(overlaps, here(paste("../Data/overlaps_", sppName, ".csv", sep = "")))
+    #overlaps <- binomialOverlap(overlaps)
+    #st_write(overlaps, paste("../Data/overlaps_", sppName, ".csv", sep = ""))
   }
+}
+
+ReadInAndProcessNHM <- function(NHMDataDir) 
+{
+  NHM_Pangolins <- read.csv(NHMDataDir, header=T)
+  NHM_Pangolins <- prepNHMData(NHM_Pangolins, 6)
+  NHM_Pangolins <- NHM_Pangolins %>% filter(Decade != is.na(Decade))
+  NHM_Pangolins <- NHM_Pangolins %>% select(-c(NOTES))
+  NHM_Pangolins <- fixTypeNames(NHM_Pangolins)
+  NHM_Pangolins$Extent..m. <- (NHM_Pangolins$Extent..m. /1000)
+  NHM_Pangolins <- NHM_Pangolins %>% rename(Extent_km = Extent..m.)
+  NHM_Pangolins <- addError(NHM_Pangolins)
+  myvars <- c('binomial', 'geometry')
+  NHM_Pangolins <- NHM_Pangolins[myvars]
+  pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial)
+  #print(pangolinDfList$Smutsia_temminckii)
+  return(invisible(pangolinDfList))
 }
 
 
 
-RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "..\\Data\\shpFiles")
+ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
+# rename all files to match their .shp counterparts
+#check regex so that we are not losing the middle "_"
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
 
 fileList = list.files(path = "..\\Data\\shpFiles", pattern = "*.shp", full.names = TRUE)
 for (file in fileList) {
   print(file)
 }
+# SplitIntoSppFrames <- function(NHM_Pangolins) 
+# {
+#  pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial) 
+#  for (frame in pangolinDfList) 
+#   {
+#     name = frame$binomial
+#     name <- paste("NHM_", name, sep = "")
+#     
+#   }
+# }
