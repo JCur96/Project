@@ -14,6 +14,7 @@
 
 #### installs COMMENT OUT AFTER FRIST RUN ######
 #install.packages("stars") ## for reading in .tif files, as sf does not natively
+#devtools::install_github("JCur96/sfe", force = TRUE)
 ## support that.
 ###############################################
 
@@ -25,14 +26,12 @@
 #############################################
 
 #imports
-devtools::install_github("JCur96/sfe", force = TRUE)
 library(sfe)
 library(rgdal)
 library(sf)
 library(ggplot2)
 library(stars)
 library(stringr)
-library(here)
 ###### Sandbox #######
 #GDALinfo("../Data/gigantea_aoh.tif") ## Check that the file exists and is a GeoTif
 
@@ -46,7 +45,31 @@ library(here)
 #sfTiff ## checking that it is the object I assume it to be. 
 
 ## plot(st_geometry(sfTiff)) ## Basic plotting to see if it matches tif.
-## Don't plot it as it 
+## Don't plot it as it
+
+# library(raster)
+# str_name <- "../Data/temminckii_aoh2.tif"
+# imported_raster = raster(str_name)
+# st_tem = st_as_sf(imported_raster)
+# imported_raster
+# polyImp = rasterToPolygons(imported_raster)
+# 
+# 
+# library(rgdal)
+###allSpPoly = readOGR(dsn = "F:\\tmpShp\\All_spp_shp.shp")
+# allSpPoly = st_read(dsn = "E:\\tmpShp\\allMinusTemn.shp")
+# 
+# crassi = st_read(dsn ="E:\\tmpShp\\shpFiles\\crassicaudata_aoh.shp")
+# ## rename (to binomial) column 1 and populate with species name conforming to 
+# ## expected input
+# ### essentially this 
+# names(crassi)[1] <- 'binomial'
+# crassi$binomial <- 'crassicaudata' ##or something spp name like that 
+# crasssi <- resolveIUCNGeom(crassi)
+# crassi <- 
+#   crassi %>%
+#   st_as_sf() %>%
+#  st_transform(4326)
 
 ##### Functions ################
 
@@ -74,89 +97,8 @@ GeoTiffToPolygon <- function(directory)
   }
 }
 
-##### Calls to fun/MAIN #######
-GeoTiffToPolygon("../Data/") ##pass directory as string with trailing slash
-
-# library(raster)
-# str_name <- "../Data/temminckii_aoh2.tif"
-# imported_raster = raster(str_name)
-# st_tem = st_as_sf(imported_raster)
-# imported_raster
-# polyImp = rasterToPolygons(imported_raster)
-# 
-# 
-# library(rgdal)
-###allSpPoly = readOGR(dsn = "F:\\tmpShp\\All_spp_shp.shp")
-allSpPoly = st_read(dsn = "E:\\tmpShp\\allMinusTemn.shp")
-
-crassi = st_read(dsn ="E:\\tmpShp\\shpFiles\\crassicaudata_aoh.shp")
-## rename (to binomial) column 1 and populate with species name conforming to 
-## expected input
-### essentially this 
-names(crassi)[1] <- 'binomial'
-crassi$binomial <- 'crassicaudata' ##or something spp name like that 
-crasssi <- resolveIUCNGeom(crassi)
-crassi <- 
-  crassi %>%
-  st_as_sf() %>%
-  st_transform(4326)
-
-## for file in dir
-### read in the file, get the name
-#### calculate overlaps against the NHM data FOR THAT SPP based on name
-##### save that data then start on the next file (because memory footprint)
-RunAOHAnalysis <- function(NHMDataDir, AOHDataDir) 
-  {
-  NHMPangolinList <- ReadInAndProcessNHM(NHMDataDir)
-  # create a df for overlap data to go to 
-  # as we will discard the loaded geometry after each species otherwise memory
-  # will run out
-  # overlapDf = data.frame(binomial=as.character(), Percent_overlap=double(), binomial_overlap=as.integer()) # or something like that
-  AOHFileList = list.files(path = AOHDataDir, pattern = "*.shp", full.names = TRUE)
-  for (file in AOHFileList) 
-    {
-    #get the file name ie the species name
-    print(file)
-    # sppName = str_extract(file, regex("\/\\w+\\_"))
-    # print(sppName)
-    sppName = str_extract(file, regex("\\/\\w+\\_"))
-    #print(sppName)
-    sppName = gsub("/", "", sppName)
-    sppName = gsub("_", "", sppName)
-    print(sppName)
-    for (item in NHMPangolinList) {
-      #print(unique(item$binomial))
-      Spp <- unique(item$binomial)
-      #print(Spp)
-      if (unique(item$binomial) == sppName) {
-        print('match')
-      }
-    }
-    #sapply(NHMPangolinList, function(x) unique(x$binomial))
-    # read the file in!
-    sppFile = st_read(dsn = file)
-    # pass it to this little pipline
-    names(sppFile)[1] <- 'binomial'
-    sppFile$binomial <- sppName
-    sppFile <- 
-      sppFile %>%
-      st_as_sf() %>%
-      st_transform(4326)
-    # calculate the overlaps and append to a df
-    # for (item in NHMPangolinList) {
-    #   #compare sppName and the current list item $Name
-    #   if (sppName == NHMPangolinList$item) {
-    #     print('found a match')
-    #   }
-      #if sppNme and item match, then calulate overlaps
-    ##}
-    #overlaps <- calculateOverlaps(NHM_Pangolins, sppFile)
-    # calculate binomal overlaps and apppend to df
-    #overlaps <- binomialOverlap(overlaps)
-    #st_write(overlaps, paste("../Data/overlaps_", sppName, ".csv", sep = ""))
-  }
-}
-
+## quick summary of funs/code needed to process NHM data, simialr to how it 
+## was done for the paper
 ReadInAndProcessNHM <- function(NHMDataDir) 
 {
   NHM_Pangolins <- read.csv(NHMDataDir, header=T)
@@ -174,24 +116,68 @@ ReadInAndProcessNHM <- function(NHMDataDir)
   return(invisible(pangolinDfList))
 }
 
-
-
-ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
-# rename all files to match their .shp counterparts
-#check regex so that we are not losing the middle "_"
-RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
-
-fileList = list.files(path = "..\\Data\\shpFiles", pattern = "*.shp", full.names = TRUE)
-for (file in fileList) {
-  print(file)
+## Updated method for processing large shp files 
+## calculates overlaps (percent and binomial)
+## generates a CSV file for each species
+## might add functionality to merge that CSV into one soon
+## for file in dir
+### read in the file, get the name
+#### calculate overlaps against the NHM data FOR THAT SPP based on name
+##### save that data then start on the next file (because memory footprint)
+RunAOHAnalysis <- function(NHMDataDir, AOHDataDir) 
+{
+  NHMPangolinList <- ReadInAndProcessNHM(NHMDataDir)
+  # create a df for overlap data to go to 
+  # as we will discard the loaded geometry after each species otherwise memory
+  # will run out
+  # overlapDf = data.frame(binomial=as.character(), Percent_overlap=double(), binomial_overlap=as.integer()) # or something like that
+  AOHFileList = list.files(path = AOHDataDir, pattern = "*.shp", full.names = TRUE)
+  for (file in AOHFileList) 
+  {
+    #get the file name ie the species name
+    print(file)
+    # sppName = str_extract(file, regex("\/\\w+\\_"))
+    # print(sppName)
+    sppName = str_extract(file, regex("\\/\\w+\\_"))
+    #print(sppName)
+    sppName = gsub("/", "", sppName)
+    sppName = gsub("\\_$", "", sppName)
+    #print(sppName)
+    #sapply(NHMPangolinList, function(x) unique(x$binomial))
+    # read the file in!
+    sppFile = st_read(dsn = file)
+    # pass it to this little pipline
+    names(sppFile)[1] <- 'binomial'
+    sppFile$binomial <- sppName
+    sppFile <- 
+      sppFile %>%
+      st_as_sf() %>%
+      st_transform(4326)
+    sppFile <- st_make_valid(sppFile)
+    # calculate the overlaps and append to a df
+    for (item in NHMPangolinList) {
+      #print(unique(item$binomial))
+      Spp <- unique(item$binomial)
+      #print(Spp)
+      if (unique(item$binomial) == sppName) {
+        #print('match')
+        overlaps <- calculateOverlaps(item, sppFile)
+        overlaps <- binomialOverlap(overlaps)
+        fullFilePath <- paste("../Data/overlaps_", sppName, ".csv", sep = "")
+        if (file.exists(fullFilePath)) { #if you want new output/ fresh rerun must delete all output files
+          print('file already exists, this run is likely for just land use!')
+          newFileName <- paste("../Data/overlaps_", sppName, "_landUse", ".csv", sep = "")
+          st_write(overlaps, newFileName)
+        } 
+        if (!file.exists(fullFilePath)) {
+          st_write(overlaps, paste("../Data/overlaps_", sppName, ".csv", sep = ""))
+        }
+      }
+    }
+  }
 }
-# SplitIntoSppFrames <- function(NHM_Pangolins) 
-# {
-#  pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial) 
-#  for (frame in pangolinDfList) 
-#   {
-#     name = frame$binomial
-#     name <- paste("NHM_", name, sep = "")
-#     
-#   }
-# }
+
+##### Calls to fun/MAIN #######
+GeoTiffToPolygon("../Data/") ##pass directory as string with trailing slash
+#ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
