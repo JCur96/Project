@@ -177,7 +177,23 @@ RunAOHAnalysis <- function(NHMDataDir, AOHDataDir)
   }
 }
 
+# Make a unified CSV of all overlap info (as later functions require that)
+# and this is simpler than rewriting the whole code base
+UnifyOverlapCSVs <- function(OverlapCSVDir) {
+  OverlapFileList = list.files(path = OverlapCSVDir, pattern = "*overlaps_", full.names = TRUE)
+  #print(OverlapFileList)
+  #make a data frame here
+  overlapDf = data.frame(binomial=as.character(), Percent_overlap=double(), binomial_overlap=as.integer()) 
+  for (file in OverlapFileList) {
+    csvObj <- read.csv(file, header=T)
+    #append/rbind/whatever it is in R to the made DF here
+    overlapDf <- rbind(overlapDf, csvObj)
+  }
+  st_write(overlapDf, "../Data/overlaps.csv")
+}
+
 ##### Calls to fun/MAIN #######
 GeoTiffToPolygon("../Data/") ##pass directory as string with trailing slash
 #ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
+UnifyOverlapCSVs("../Data/")
