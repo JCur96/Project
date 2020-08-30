@@ -135,7 +135,7 @@ RunAOHAnalysis <- function(NHMDataDir, AOHDataDir)
   for (file in AOHFileList) 
   {
     #get the file name ie the species name
-    print(file)
+    #print(file)
     # sppName = str_extract(file, regex("\/\\w+\\_"))
     # print(sppName)
     sppName = str_extract(file, regex("\\/\\w+\\_"))
@@ -152,7 +152,9 @@ RunAOHAnalysis <- function(NHMDataDir, AOHDataDir)
     sppFile <- 
       sppFile %>%
       st_as_sf() %>%
-      st_transform(4326)
+      st_union()## %>%
+      ##st_transform(4326)
+    #sppFile <- st_union(sppFile)
     sppFile <- st_make_valid(sppFile)
     # calculate the overlaps and append to a df
     for (item in NHMPangolinList) {
@@ -197,3 +199,5 @@ GeoTiffToPolygon("../Data/") ##pass directory as string with trailing slash
 #ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
 UnifyOverlapCSVs("../Data/")
+## trying again with dissolved javanica
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/javanica_dissolved") ## check javanica specific and compare with overlaps all run before
