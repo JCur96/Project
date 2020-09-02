@@ -14,7 +14,7 @@
 
 #### installs COMMENT OUT AFTER FRIST RUN ######
 #install.packages("stars") ## for reading in .tif files, as sf does not natively
-#devtools::install_github("JCur96/sfe", force = TRUE)
+devtools::install_github("JCur96/sfe", ref = "ReSubmitPaper", force = TRUE)
 ## support that.
 ###############################################
 
@@ -102,7 +102,7 @@ GeoTiffToPolygon <- function(directory)
 ReadInAndProcessNHM <- function(NHMDataDir) 
 {
   NHM_Pangolins <- read.csv(NHMDataDir, header=T)
-  NHM_Pangolins <- prepNHMData(NHM_Pangolins, 6)
+  NHM_Pangolins <- invisible(prepNHMData(NHM_Pangolins, 6))
   NHM_Pangolins <- NHM_Pangolins %>% filter(Decade != is.na(Decade))
   NHM_Pangolins <- NHM_Pangolins %>% select(-c(NOTES))
   NHM_Pangolins <- fixTypeNames(NHM_Pangolins)
@@ -163,6 +163,14 @@ RunAOHAnalysis <- function(NHMDataDir, AOHDataDir)
       #print(Spp)
       if (unique(item$binomial) == sppName) {
         #print('match')
+        #item <- st_transform(item, 4326)
+        #sppFile <- st_transform(sppFile, 4326)
+        #print(st_crs(item))
+        #print("\n")
+        #print(st_crs(sppFile))
+        #item = st_transform(item, 2163)
+        #sppFile = st_transform(sppFile, 2163)
+        #print(head(sppFile))
         overlaps <- calculateOverlaps(item, sppFile)
         overlaps <- binomialOverlap(overlaps)
         fullFilePath <- paste("../Data/overlaps_", sppName, ".csv", sep = "")
@@ -194,6 +202,12 @@ UnifyOverlapCSVs <- function(OverlapCSVDir) {
   st_write(overlapDf, "../Data/overlaps.csv")
 }
 
+
+### NEW OVERLAP CODE 
+
+
+
+
 ##### Calls to fun/MAIN #######
 GeoTiffToPolygon("../Data/") ##pass directory as string with trailing slash
 #ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
@@ -201,3 +215,21 @@ RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
 UnifyOverlapCSVs("../Data/")
 ## trying again with dissolved javanica
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/javanica_dissolved") ## check javanica specific and compare with overlaps all run before
+
+# Old IUCN run to check those overlaps
+IUCN <- readOGR("../Data/IUCN_Pholidota", "maps_pholidota")
+IUCN <- st_as_sf(IUCN)
+myvars <- c('binomial', 'geometry')
+IUCN <- IUCN[myvars]
+IUCNList <- split(IUCN, f = IUCN$binomial)
+for (df in IUCNList) {
+  #print(df$binomial)
+  name = unique(df$binomial)
+  name = gsub(" ", "_", name)
+  name = paste(name,"_aoh")
+  name = gsub(" ", "", name)
+  #print(name)
+  st_write(df, paste("../Data/IUCNShpFiles/", name, ".shp", sep = ""))
+}
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/IUCNShpFiles")
+UnifyOverlapCSVs("../Data/")
