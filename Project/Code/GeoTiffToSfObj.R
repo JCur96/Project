@@ -203,7 +203,11 @@ UnifyOverlapCSVs <- function(OverlapCSVDir) {
 }
 
 
-### NEW OVERLAP CODE 
+### NEW OVERLAP CODE #########
+# Apparently it took me re-writing this (basically just stripping out junk)
+# to make this work with the IUCN shp files. 
+
+#############################
 
 # two input function for calculating the percentage overlap
 calcOverlaps <- function(df1, df2) {
@@ -281,4 +285,6 @@ for (df in IUCNList) {
   st_write(df, paste("../Data/IUCNShpFiles/", name, ".shp", sep = ""))
 }
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/IUCNShpFiles")
+UnifyOverlapCSVs("../Data/")
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
 UnifyOverlapCSVs("../Data/")
