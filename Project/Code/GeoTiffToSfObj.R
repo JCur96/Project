@@ -287,4 +287,90 @@ for (df in IUCNList) {
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/IUCNShpFiles")
 UnifyOverlapCSVs("../Data/")
 RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/shpFiles")
-UnifyOverlapCSVs("../Data/")
+## FAILED
+#RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/temminckii")
+#UnifyOverlapCSVs("../Data/")
+## attempting temminckii again after Emily unify
+RunAOHAnalysis("../Data/NHMPangolinsCompatability.csv", "../Data/temminckii2")
+UnifyOverlapCSVs("../Data")
+
+
+ProcessTemm <- function(TemData) {
+  NHM_Pangolins <- read.csv(TemData, header=T)
+  NHM_Pangolins <- invisible(prepNHMData(NHM_Pangolins, 6))
+  NHM_Pangolins <- NHM_Pangolins %>% filter(Decade != is.na(Decade))
+  NHM_Pangolins <- NHM_Pangolins %>% select(-c(NOTES))
+  NHM_Pangolins <- fixTypeNames(NHM_Pangolins)
+  NHM_Pangolins$Extent..m. <- (NHM_Pangolins$Extent..m. /1000)
+  NHM_Pangolins <- NHM_Pangolins %>% rename(Extent_km = Extent..m.)
+  NHM_Pangolins <- addError(NHM_Pangolins)
+  myvars <- c('binomial', 'geometry')
+  NHM_Pangolins <- NHM_Pangolins[myvars]
+  pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial)
+  return(NHM_Pangolins)
+}
+temminckii <- ProcessTemm("../Data/temmickiiOnly.csv")
+st_write(temminckii, "../Data/temmickiiProcessed.shp")
+
+NHM_Pangolins <- read.csv("../Data/temmickiiOnly.csv", header=T)
+NHM_Pangolins <- invisible(prepNHMData(NHM_Pangolins, 6))
+NHM_Pangolins <- NHM_Pangolins %>% filter(Decade != is.na(Decade))
+NHM_Pangolins <- NHM_Pangolins %>% select(-c(NOTES))
+NHM_Pangolins <- fixTypeNames(NHM_Pangolins)
+NHM_Pangolins$Extent..m. <- (NHM_Pangolins$Extent..m. /1000)
+NHM_Pangolins <- NHM_Pangolins %>% rename(Extent_km = Extent..m.)
+NHM_Pangolins <- addError(NHM_Pangolins)
+myvars <- c('binomial', 'geometry')
+NHM_Pangolins <- NHM_Pangolins[myvars]
+NHM_Pangolins <- st_make_valid(NHM_Pangolins)
+class(NHM_Pangolins)
+IUCN <- readOGR("../Data/IUCN_Pholidota", "maps_pholidota")
+IUCN <- st_as_sf(IUCN)
+myvars <- c('binomial', 'geometry')
+IUCN <- IUCN[myvars]
+
+# 
+# NHM_Pangolins
+# st_rasterize(NHM_Pangolins, file = "../Data/temmickiiRaster.tif")
+# 
+# sfe::plotMaps(NHN_Pangolins, IUCN)
+# write.csv(NHM_Pangolins, file ="../Data/temminckiiProcessedCSV.csv")
+# st_write(NHM_Pangolins, "../Data/temmicnkiiST.csv")
+# st_make_valid(NHM_Pangolins)
+# st_write(NHM_Pangolins, "../Data/temmicnkiiST.csv", "sf", append = TRUE)
+# 
+# sfbbox <- st_bbox(NHM_Pangolins)
+# bbox <- unname(sfbbox)
+# # puts the coords into the order expected down in ggmap coords
+# xlim <- c(bbox[1], bbox[3])
+# ylim <- c(bbox[2], bbox[4])
+# # make a base map to plot against
+# baseMap <- st_as_sf(maps::map('world', plot=F, fill=T))
+# # print('This will take some time...')
+# IUCN_var <- IUCN[IUCN$binomial == var,]
+# NHM_var <- NHM_Pangolins[NHM_Pangolins$binomial == var,]
+# p = ggplot2::ggplot(data = baseMap) +
+#   ggplot2::geom_sf() +
+#   geom_sf(mapping = aes(alpha = 0.5, fill='blue'), data = NHM_Pangolins, show.legend = F) +
+#   # adding IUCN maps
+#   geom_sf(mapping = aes(alpha = 0.1, fill = "red"), data = IUCN, show.legend = F) +
+#   # zooming to correct cords (South America)
+#   coord_sf(xlim = xlim, ylim = ylim, expand = T)
+# #saving map as png
+# png(paste("../Data/", 'temminckii.png', sep=''), width=600, height=500, res=120)
+# print(p) # printing to png
+# ggplot(p)
+
+
+#### trying again for temminckii
+temmFiles = list.files("../Data/tem_div", pattern = "*.shp", recursive = T, full.names = T)
+listOfFour = c("one", "two", "three", "four")
+for (file in temmFiles) {
+  listOfFour[file] = st_read(dsn = file)
+}
+NHMPangolinList <- ReadInAndProcessNHM("../Data/NHMPangolinsCompatability.csv")
+for (section in listOfFour) {
+  #pull out part of list
+  section
+  calculateOverlaps(NHMPangolinList, section)
+}
