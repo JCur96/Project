@@ -406,12 +406,12 @@ AOHOverlaps <- function(NHMPangolins, AOHDf) {
     }
     #sum list 
     sumOfPercentList = sum(percentList)
-    NHMPangolins$percentOverlap <- sumOfPercentList #change to percent overlap lol 
+    NHMPangolins$percentOverlap[row] <- sumOfPercentList #change to percent overlap lol 
     # also make this do for each row but like stop and write out at the end of the row 
     # and start on the next one like destrucivtly to untie memory
-    if (entry %% 5 == 0) {
-      st_write(NHMPangolins, paste("../Data/Overlaps/TempOverlaps", row, entry, ".csv", sep = "")) # writePangolinData to overlap file in a specific directory, then merge after
-    }
+    # if (entry %% 5 == 0) {
+    #   st_write(NHMPangolins, paste("../Data/Overlaps/TempOverlaps", row, entry, ".csv", sep = "")) # writePangolinData to overlap file in a specific directory, then merge after
+    # }
   }
   return(NHMPangolins)
 }
@@ -433,17 +433,48 @@ NHM_Pangolins <- st_make_valid(NHM_Pangolins)
 NHM_Pangolins<- st_transform(NHM_Pangolins, 2163)
 NHM_Pangolins$percentOverlap <- NA
 
-AOHOverlaps(NHM_Pangolins, temAoh)
-UnifyOverlapCSVs("../Data/Overlaps")
+NHM_Pangolins <- AOHOverlaps(NHM_Pangolins, temAoh)
+st_write(NHM_Pangolins, "../Data/temmickiiFourthOverlaps.csv")
+UnifyOverlapCSVs("../Data/Overlaps") ## the above is now working, so lets generate the overlaps
+## then worry about tidying this up
+NHM_Pangolins <- st_read("../Data/NHM_all_pangolins.csv")
+NHM_Pangolins <- st_set_crs(NHM_Pangolins, 2163)
+NHM_Pangolins$binomial <- gsub(' ', '_', NHM_Pangolins$binomial)
+NHM_Pangolins$Extent_km <- as.double(NHM_Pangolins$Extent_km)
+NHM_Pangolins <- st_buffer(NHM_Pangolins, NHM_Pangolins$Extent_km)
+NHM_Pangolins <- st_make_valid(NHM_Pangolins)
+NHM_Pangolins<- st_transform(NHM_Pangolins, 2163)
+NHM_Pangolins$percentOverlap <- NA
+myvars <- c('X_id', 'RegistrationNumber', 'binomial', 'percentOverlap', 'geometry')
+NHM_Pangolins <- NHM_Pangolins[myvars]
+temFrame <- subset(NHM_Pangolins, binomial == 'Smutsia_temminckii')
+temFrame <- NHM_Pangolins[NHM_Pangolins$binomial == '*temminckii']
+NHM_Pangolins <- NHM_Pangolins[NHM_Pangolins$binomial != 'Smutsia_temminckii', ]
 
-#file.rename(list.files(pattern = "*"), paste("Smutsia_temmickii1_aoh"))
-
-# for (file in folder) {
-#   #rename file like this 
-#   ## Smutsia_temminckii[x]_aoh
-#   
-# }
-
+ReadInAndProcessNHM <- function(NHMDataDir) #rewrite to work with the NHM download data
+{
+  NHM_Pangolins <- st_read(NHMDataDir)
+  NHM_Pangolins <- st_set_crs(NHM_Pangolins, 2163)
+  NHM_Pangolins$binomial <- gsub(' ', '_', NHM_Pangolins$binomial)
+  NHM_Pangolins$Extent_km <- as.double(NHM_Pangolins$Extent_km)
+  NHM_Pangolins <- st_buffer(NHM_Pangolins, NHM_Pangolins$Extent_km)
+  NHM_Pangolins <- st_make_valid(NHM_Pangolins)
+  NHM_Pangolins<- st_transform(NHM_Pangolins, 2163)
+  NHM_Pangolins$percentOverlap <- NA
+  myvars <- c('X_id', 'RegistrationNumber', 'binomial', 'percentOverlap', 'geometry')
+  NHM_Pangolins <- NHM_Pangolins[myvars]
+  #temFrame <- subset(NHM_Pangolins, binomial == 'Smutsia_temminckii') # dont need these in this fun as this is just for non-tem
+  #temFrame <- NHM_Pangolins[NHM_Pangolins$binomial == '*temminckii']
+  NHM_Pangolins <- NHM_Pangolins[NHM_Pangolins$binomial != 'Smutsia_temminckii', ]
+  pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial)
+  return(invisible(pangolinDfList))
+}
+RunAOHAnalysis("../Data/NHM_all_pangolins.csv", "../Data/shpFiles") ## doesnt work, not sure why 
+UnifyOverlapCSVs("../Data/")
+temAoh4 <- st_read("../Data/tem_Div/temminckii_aoh_fourth")
+temAoh4$binomial = "Smutsia_temminckii"
+temAoh4 <- st_transform(temAoh4, 2163)
+temFrame4 <- AOHOverlaps(temFrame, temAoh4)
 ##### sandbox ######
 # 
 # NHM_Pangolins
@@ -507,3 +538,12 @@ UnifyOverlapCSVs("../Data/Overlaps")
 # IUCN <- st_as_sf(IUCN)
 # myvars <- c('binomial', 'geometry')
 # IUCN <- IUCN[myvars]
+
+#file.rename(list.files(pattern = "*"), paste("Smutsia_temmickii1_aoh"))
+
+# for (file in folder) {
+#   #rename file like this 
+#   ## Smutsia_temminckii[x]_aoh
+#   
+# }
+
