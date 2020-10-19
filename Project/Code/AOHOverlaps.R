@@ -6,6 +6,7 @@ library(sf)
 library(ggplot2)
 library(stars)
 library(stringr)
+library(sfe)
 
 ## Functions ##
 #############################
@@ -78,8 +79,8 @@ ReadInAndProcessNHM <- function(NHMDataDir) #rewrite to work with the NHM downlo
   NHM_Pangolins <- NHM_Pangolins[NHM_Pangolins$binomial != 'Smutsia_temminckii', ]
   ## temp addition, to run from where left off
   ## could be a lot fancier and add as input args, but this is quick 
-  NHMDataDir <- NHM_Pangolins[NHM_Pangolins$binomial != 'Manis_crassicaudata', ] ## tmp comment out after run
-  NHMDataDir <- NHM_Pangolins[NHM_Pangolins$binomial != 'Manis_javainca', ] ## tmp comment out after run
+  NHM_Pangolins <- NHM_Pangolins[NHM_Pangolins$binomial != 'Manis_crassicaudata', ] ## tmp comment out after run
+  NHM_Pangolins <- NHM_Pangolins[NHM_Pangolins$binomial != 'Manis_javainca', ] ## tmp comment out after run
   ##head(NHM_Pangolins)
   pangolinDfList <- split(NHM_Pangolins, f = NHM_Pangolins$binomial)
   return(invisible(pangolinDfList))
@@ -166,3 +167,12 @@ RunAOHAnalysis("../Data/NHM_all_pangolins.csv", "../Data/shpFiles")
 ## arsehole computer decided to update overnight so halted progress. Thankfully 
 ## got Manis crassicaudata and Manis javanica and their landuse done, so will
 ## run again excluding those.
+UnifyOverlapCSVs("../Data")
+overlaps <- st_read("../Data/overlaps.csv")
+NHM <- st_read("../Data/NHM_all_pangolins.csv")
+NHMPlusOverlaps <- merge(NHM, overlaps, "X_id")
+NHMPlusOverlaps <- NHMPlusOverlaps %>% dplyr::distinct(X_id, .keep_all = T)
+
+Phat <- NHMPlusOverlaps[NHMPlusOverlaps$binomial.y == "Phataginus_tricuspis",]
+NHMPlusOverlaps$Percent_overlap <- as.double(NHMPlusOverlaps$Percent_overlap)
+totOverlap = sum(NHMPlusOverlaps$Percent_overlap)
